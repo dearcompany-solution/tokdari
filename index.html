@@ -628,7 +628,21 @@ async function saveOnboard() {
 
 // ══════════ APP START ══════════
 async function startApp() {
-  document.getElementById('app').classList.add('show');
+  // 모든 화면 숨기기
+  document.getElementById('signup-screen').classList.remove('show');
+  document.getElementById('login-screen').classList.remove('show');
+  document.getElementById('onboard').classList.remove('show');
+
+  // 앱 표시 (클래스 + 직접 스타일 둘 다)
+  const appEl = document.getElementById('app');
+  appEl.classList.add('show');
+  appEl.style.display = 'flex';
+
+  // 홈 화면 활성화
+  const homeEl = document.getElementById('home-screen');
+  homeEl.classList.add('active');
+  homeEl.style.display = 'flex';
+
   applyProfile();
   await loadMessages();
   await loadDiary();

@@ -174,7 +174,55 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Noto San
 .modal-btn.primary{background:var(--purple);color:#fff;border-color:var(--purple)}
 .modal-btn.cancel{background:transparent;color:var(--text2)}
 
-/* TOAST */
+/* CHATROOM CARD */
+.room-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+  transition: background .15s;
+  position: relative;
+}
+.room-card:active { background: var(--bg3); }
+.room-avatar {
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--purple), var(--pink));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px; flex-shrink: 0;
+}
+.room-info { flex: 1; min-width: 0; }
+.room-name { font-weight: 700; font-size: .95rem; }
+.room-style { font-size: .72rem; color: var(--text3); margin-top: 3px; }
+.room-last { font-size: .78rem; color: var(--text2); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.room-delete {
+  background: rgba(239,68,68,.15);
+  border: 1px solid rgba(239,68,68,.3);
+  border-radius: 10px;
+  color: #f87171;
+  font-size: .75rem;
+  padding: 5px 10px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.room-unread {
+  width: 10px; height: 10px;
+  background: var(--pink);
+  border-radius: 50%;
+  position: absolute;
+  top: 14px; right: 14px;
+}
+.empty-rooms {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  flex: 1; gap: 12px; padding: 3rem 1rem;
+  color: var(--text3); font-size: .85rem; text-align: center;
+}
+  /* TOAST */
 .toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:8px 16px;font-size:.8rem;color:var(--text2);opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap;z-index:300}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
@@ -295,52 +343,15 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Noto San
 
   <!-- 홈 -->
   <div id="home-screen" class="active">
-    <div class="home-hero">
-      <div class="home-hero-avatar" id="home-avatar">🐧</div>
-      <div>
-        <h2 id="home-greeting">야 왔구나!</h2>
-        <p id="home-msg">오늘 뭐 있었어? 어서 얘기해봐 ㅋㅋ</p>
-      </div>
+    <div class="app-header">
+      <div style="font-size:1.1rem;font-weight:700;">톡다리 💬</div>
+      <div style="margin-left:auto;font-size:.75rem;color:var(--text3)" id="home-username"></div>
     </div>
-    <div class="mood-selector">
-      <p>오늘 기분이 어때?</p>
-      <div class="mood-row">
-        <button class="mood-btn" data-mood="😊" onclick="selectMood(this)">😊</button>
-        <button class="mood-btn" data-mood="😐" onclick="selectMood(this)">😐</button>
-        <button class="mood-btn" data-mood="😤" onclick="selectMood(this)">😤</button>
-        <button class="mood-btn" data-mood="😢" onclick="selectMood(this)">😢</button>
-        <button class="mood-btn" data-mood="🤬" onclick="selectMood(this)">🤬</button>
-      </div>
+    <div id="chatroom-list" style="flex:1;overflow-y:auto;padding:.75rem;display:flex;flex-direction:column;gap:10px;">
+      <!-- 채팅방 카드들 여기 -->
     </div>
-    <div class="home-grid">
-      <div class="home-card" onclick="switchTab('chat')">
-        <div class="hc-icon">💬</div>
-        <div class="hc-title">대화하기</div>
-        <div class="hc-sub">친구처럼 털어놔</div>
-      </div>
-      <div class="home-card" onclick="switchTab('chat');setTrashMode(true)">
-        <div class="hc-icon">🗑</div>
-        <div class="hc-title">감정 쓰레기통</div>
-        <div class="hc-sub">마음껏 쏟아내</div>
-      </div>
-      <div class="home-card" onclick="switchTab('diary')">
-        <div class="hc-icon">📔</div>
-        <div class="hc-title">감정 다이어리</div>
-        <div class="hc-sub">기록 남기기</div>
-      </div>
-      <div class="home-card" onclick="switchTab('chat');askSchedule()">
-        <div class="hc-icon">📅</div>
-        <div class="hc-title">개인비서</div>
-        <div class="hc-sub">일정 & 할일</div>
-      </div>
-    </div>
-    <div class="home-stat-row">
-      <div class="stat-card"><div class="sv" id="stat-msgs">0</div><div class="sl">주고받은 톡</div></div>
-      <div class="stat-card"><div class="sv" id="stat-diary">0</div><div class="sl">다이어리</div></div>
-    </div>
+    <button class="diary-fab" onclick="openNewRoomModal()" style="bottom:80px">+</button>
   </div>
-
-  <!-- 채팅 -->
   <div id="chat-screen" class="screen">
     <div class="app-header">
       <div class="avatar-circle"><span id="chat-avatar-emoji">🐧</span><div class="online-dot"></div></div>
@@ -429,7 +440,66 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Noto San
     </button>
   </div>
 </div>
+<!-- 채팅방 생성 모달 -->
+<div class="modal-overlay" id="newroom-modal">
+  <div class="modal-sheet" style="max-height:85vh;overflow-y:auto;">
+    <div class="modal-handle"></div>
+    <div class="modal-title">새 친구 만들기 🐣</div>
 
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <div>
+        <div class="ob-label">친구 이름</div>
+        <input class="ob-input" id="nr-name" placeholder="예: 펭수, 민지, 악당이" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:10px 14px;color:var(--text);font-size:.88rem;outline:none;font-family:'Noto Sans KR',sans-serif;">
+      </div>
+      <div>
+        <div class="ob-label">내가 부를 호칭</div>
+        <input class="ob-input" id="nr-nickname" placeholder="예: 야, 친구야, 자기야..." style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:10px 14px;color:var(--text);font-size:.88rem;outline:none;font-family:'Noto Sans KR',sans-serif;">
+      </div>
+      <div>
+        <div class="ob-label">아바타</div>
+        <div class="tag-wrap" id="nr-avatar">
+          <button class="tag on" data-val="🐧">🐧 펭수</button>
+          <button class="tag" data-val="🐻">🐻 곰돌이</button>
+          <button class="tag" data-val="🦊">🦊 여우</button>
+          <button class="tag" data-val="😈">😈 악당</button>
+          <button class="tag" data-val="👾">👾 외계인</button>
+          <button class="tag" data-val="🐱">🐱 고양이</button>
+          <button class="tag" data-val="🐶">🐶 강아지</button>
+          <button class="tag" data-val="🤖">🤖 로봇</button>
+        </div>
+      </div>
+      <div>
+        <div class="ob-label">말투 스타일</div>
+        <div class="tag-wrap" id="nr-style">
+          <button class="tag on" data-val="친구같이 편하고 솔직하게, 반말로">친구같이</button>
+          <button class="tag" data-val="욕도 쓰면서 찐친처럼, 반말로">욕쟁이 찐친</button>
+          <button class="tag" data-val="다정하고 따뜻하게, 반말로">다정하게</button>
+          <button class="tag" data-val="직설적이고 팩트만, 반말로">직설적으로</button>
+          <button class="tag" data-val="개그맨처럼 웃기게, 반말로">개그맨처럼</button>
+          <button class="tag" data-val="츤데레처럼, 반말로">츤데레</button>
+          <button class="tag" data-val="선생님처럼 지식있게, 반말로">선생님</button>
+        </div>
+      </div>
+      <div>
+        <div class="ob-label">역할 (여러 개 가능)</div>
+        <div class="tag-wrap" id="nr-roles">
+          <button class="tag on" data-val="감정 쓰레기통">감정 쓰레기통</button>
+          <button class="tag on" data-val="욕받이">욕받이</button>
+          <button class="tag" data-val="응원단">응원단</button>
+          <button class="tag on" data-val="개인비서">개인비서</button>
+          <button class="tag" data-val="다이어리 친구">다이어리 친구</button>
+          <button class="tag" data-val="공부 도우미">공부 도우미</button>
+        </div>
+      </div>
+      <div class="auth-error" id="nr-error"></div>
+    </div>
+
+    <div class="modal-btns">
+      <button class="modal-btn cancel" onclick="closeNewRoomModal()">취소</button>
+      <button class="modal-btn primary" onclick="createChatroom()">만들기 🚀</button>
+    </div>
+  </div>
+</div>
 <!-- 다이어리 모달 -->
 <div class="modal-overlay" id="diary-modal">
   <div class="modal-sheet">
@@ -652,7 +722,7 @@ async function startApp() {
   homeEl.style.display = 'flex';
 
   applyProfile();
-  await loadMessages();
+  await loadChatrooms();
   await loadDiary();
   updateStats();
   if (messages.length === 0) sendFirstMessage();
@@ -686,18 +756,21 @@ async function loadMessages() {
 }
 
 async function saveMessage(role, content) {
-  await sb.from('messages').insert({ user_id: currentUser.id, role, content });
+  if (!currentRoom) return;
+  await sb.from('messages').insert({
+    user_id: currentUser.id,
+    chatroom_id: currentRoom.id,
+    role, content
+  });
 }
 
 // ══════════ CHAT ══════════
 function buildSystemPrompt() {
-  const roles = profile.roles?.join(', ') || '친구';
-  const nickname = profile.friend_nickname || '친구야';
-  return `너는 "${profile.friend_name || '펭수'}"이야. 사용자가 너를 "${nickname}"라고 불러.
-
-말투: ${profile.talk_style || '친구같이 편하고 솔직하게, 반말로'}
+  const room = currentRoom || {};
+  const roles = room.roles?.join(', ') || '친구';
+  return `너는 "${room.name || '친구'}"이야. 사용자가 너를 "${room.nickname || '친구야'}"라고 불러.
+말투: ${room.talk_style || '친구같이 편하고 솔직하게, 반말로'}
 역할: ${roles}
-
 규칙:
 - 항상 반말로 대화해
 - 짧고 자연스럽게 실제 친구처럼 (2~4문장 이내)
@@ -942,8 +1015,8 @@ function makeExclusive(id) {
 }
 function makeMulti(id) { document.getElementById(id)?.querySelectorAll('.tag').forEach(t=>t.addEventListener('click',()=>t.classList.toggle('on'))); }
 
-['ob-avatar','ob-style','s-avatar','s-style'].forEach(makeExclusive);
-['ob-roles'].forEach(makeMulti);
+['ob-avatar','ob-style','s-avatar','s-style','nr-avatar','nr-style'].forEach(makeExclusive);
+['ob-roles','nr-roles'].forEach(makeMulti);
 
 // ══════════ NOTIFICATIONS ══════════
 async function requestNotifPermission() {
@@ -960,7 +1033,135 @@ function scheduleRandomPing() {
     scheduleRandomPing();
   }, delay);
 }
+// ══════════ CHATROOMS ══════════
+let chatrooms = [];
+let currentRoom = null;
 
+async function loadChatrooms() {
+  const { data, error } = await sb.from('chatrooms')
+    .select('*')
+    .eq('user_id', currentUser.id)
+    .order('created_at', { ascending: false });
+  if (data) { chatrooms = data; renderChatrooms(); }
+}
+
+function renderChatrooms() {
+  const list = document.getElementById('chatroom-list');
+  document.getElementById('home-username').textContent = profile.name || '';
+
+  if (!chatrooms.length) {
+    list.innerHTML = `
+      <div class="empty-rooms">
+        <div style="font-size:3rem">🐣</div>
+        <div>아직 친구가 없어!<br>+ 버튼 눌러서 첫 친구 만들어봐</div>
+      </div>`;
+    return;
+  }
+
+  list.innerHTML = chatrooms.map(room => `
+    <div class="room-card" onclick="enterRoom(${room.id})">
+      <div class="room-avatar">${room.avatar}</div>
+      <div class="room-info">
+        <div class="room-name">${room.name}</div>
+        <div class="room-style">${room.talk_style.replace(', 반말로','')}</div>
+        <div class="room-last" id="last-${room.id}">대화를 시작해봐 👋</div>
+      </div>
+      <button class="room-delete" onclick="event.stopPropagation();deleteRoom(${room.id})">삭제</button>
+    </div>
+  `).join('');
+}
+
+function openNewRoomModal() {
+  document.getElementById('newroom-modal').classList.add('show');
+  document.getElementById('nr-name').value = '';
+  document.getElementById('nr-nickname').value = '';
+  document.getElementById('nr-error').textContent = '';
+  // 태그 초기화
+  document.querySelectorAll('#nr-avatar .tag').forEach((t,i) => { t.classList.toggle('on', i===0); });
+  document.querySelectorAll('#nr-style .tag').forEach((t,i) => { t.classList.toggle('on', i===0); });
+  document.querySelectorAll('#nr-roles .tag').forEach((t,i) => { t.classList.toggle('on', i<2); });
+}
+
+function closeNewRoomModal() {
+  document.getElementById('newroom-modal').classList.remove('show');
+}
+
+async function createChatroom() {
+  const name = document.getElementById('nr-name').value.trim();
+  const nickname = document.getElementById('nr-nickname').value.trim();
+  const avatar = getTag('nr-avatar') || '🐧';
+  const style = getTag('nr-style') || '친구같이 편하고 솔직하게, 반말로';
+  const roles = getTags('nr-roles');
+  const errEl = document.getElementById('nr-error');
+
+  if (!name) { errEl.textContent = '친구 이름을 입력해줘!'; return; }
+  if (!nickname) { errEl.textContent = '호칭을 입력해줘!'; return; }
+
+  errEl.textContent = '만드는 중...';
+
+  const { data, error } = await sb.from('chatrooms').insert({
+    user_id: currentUser.id,
+    name, avatar,
+    talk_style: style,
+    roles: roles.length ? roles : ['친구'],
+    nickname
+  }).select().single();
+
+  if (error) { errEl.textContent = '실패: ' + error.message; return; }
+
+  chatrooms.unshift(data);
+  renderChatrooms();
+  closeNewRoomModal();
+  showToast(`${name} 만들었어! 대화 시작해봐 🎉`);
+}
+
+async function deleteRoom(roomId) {
+  const room = chatrooms.find(r => r.id === roomId);
+  if (!confirm(`"${room?.name}" 채팅방을 삭제할까?\n대화 내용도 전부 사라져!`)) return;
+
+  await sb.from('messages').delete().eq('chatroom_id', roomId);
+  await sb.from('chatrooms').delete().eq('id', roomId);
+
+  chatrooms = chatrooms.filter(r => r.id !== roomId);
+  if (currentRoom?.id === roomId) {
+    currentRoom = null;
+    messages = [];
+  }
+  renderChatrooms();
+  showToast('채팅방 삭제됐어');
+}
+
+async function enterRoom(roomId) {
+  currentRoom = chatrooms.find(r => r.id === roomId);
+  if (!currentRoom) return;
+
+  // 채팅 헤더 업데이트
+  document.getElementById('chat-avatar-emoji').textContent = currentRoom.avatar;
+  document.getElementById('chat-name').textContent = currentRoom.name;
+  document.getElementById('chat-status').textContent = '온라인';
+
+  // 메시지 로드
+  messages = [];
+  document.getElementById('chat-messages').innerHTML = '';
+  await loadRoomMessages(roomId);
+
+  if (messages.length === 0) await sendFirstMessage();
+
+  switchTab('chat');
+}
+
+async function loadRoomMessages(roomId) {
+  const { data } = await sb.from('messages')
+    .select('*')
+    .eq('user_id', currentUser.id)
+    .eq('chatroom_id', roomId)
+    .order('created_at', { ascending: true })
+    .limit(100);
+  if (data) {
+    messages = data.map(m => ({ role: m.role, content: m.content }));
+    renderAllMessages();
+  }
+}
 // ══════════ TOAST ══════════
 function showToast(msg) {
   const t = document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
@@ -968,6 +1169,7 @@ function showToast(msg) {
 }
 
 document.getElementById('diary-modal').addEventListener('click', function(e){ if(e.target===this) closeDiaryModal(); });
+document.getElementById('newroom-modal').addEventListener('click', function(e){ if(e.target===this) closeNewRoomModal(); });
 </script>
 </body>
 </html>

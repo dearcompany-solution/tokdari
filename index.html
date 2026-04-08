@@ -558,15 +558,22 @@ async function doLogin() {
     .eq('password_hash', password)
     .maybeSingle();
 
+  console.log('프로필 조회 결과:', data, error); // ← 추가
+
   if (error) { errEl.textContent = '오류: ' + error.message; return; }
   if (!data) { errEl.textContent = '아이디 또는 비밀번호가 틀렸어!'; return; }
 
   profile = data;
   currentUser = { id: data.id };
 
+  console.log('currentUser:', currentUser); // ← 추가
+
   errEl.textContent = '';
   hideSplash();
-  startApp();
+
+  console.log('startApp 호출 전'); // ← 추가
+  await startApp();
+  console.log('startApp 완료'); // ← 추가
 }
 
 async function doLogout() {

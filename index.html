@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="톡다리">
@@ -455,7 +456,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Noto San
 // ══════════ SUPABASE 설정 ══════════
 // ⬇️ 여기에 본인 Supabase 정보 입력
 const SUPABASE_URL = 'https://aeswnjssbaoqwicmgarb.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_2mxuItqt4xtA1lkMDnWN7g_qc4a2Sne';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlc3duanNzYmFvcXdpY21nYXJiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2MTI4ODIsImV4cCI6MjA5MTE4ODg4Mn0.kNN-ggvTe44co49Qe0ywahxKFhRVfrwwVJJQ-kJTwE0';
 const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 

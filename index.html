@@ -459,7 +459,16 @@ const SUPABASE_URL = 'https://aeswnjssbaoqwicmgarb.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlc3duanNzYmFvcXdpY21nYXJiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2MTI4ODIsImV4cCI6MjA5MTE4ODg4Mn0.kNN-ggvTe44co49Qe0ywahxKFhRVfrwwVJJQ-kJTwE0';
 const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
-
+// 세션 저장/복원
+  function saveSession(profileData) {
+  localStorage.setItem('tokdari_session', JSON.stringify(profileData));
+}
+function loadSession() {
+  try { return JSON.parse(localStorage.getItem('tokdari_session')); } catch { return null; }
+}
+function clearSession() {
+  localStorage.removeItem('tokdari_session');
+}
 // ══════════ STATE ══════════
 let currentUser = null;
 let profile = {};
@@ -472,19 +481,19 @@ let selectedDiaryMood = '😊';
 // ══════════ INIT ══════════
 window.addEventListener('load', async () => {
   if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistrations().then(regs => {
-    regs.forEach(reg => reg.unregister());
-  });
-}
-  // 로그인 상태 확인
-  const { data: { session } } = await sb.auth.getSession();
-  if (session) {
-    currentUser = session.user;
-    await loadProfile();
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+  // 저장된 세션 확인
+  const saved = loadSession();
+  if (saved && saved.id) {
+    profile = saved;
+    currentUser = { id: saved.id };
+    hideSplash();
+    await startApp();
   } else {
-  hideSplash();
-  showLogin();
-}
+    hideSplash();
+    showSignup();
+  }
 });
 
 function hideSplash() {
@@ -568,20 +577,17 @@ async function doLogin() {
 
   profile = data;
   currentUser = { id: data.id };
-
-  console.log('currentUser:', currentUser); // ← 추가
+  saveSession(data); // ← 세션 저장 추가
 
   errEl.textContent = '';
   hideSplash();
-
-  console.log('startApp 호출 전'); // ← 추가
   await startApp();
   console.log('startApp 완료'); // ← 추가
 }
 
 async function doLogout() {
   if (!confirm('로그아웃 할까?')) return;
-  await sb.auth.signOut();
+  clearSession(); // ← 세션 삭제
   currentUser = null;
   profile = {};
   messages = [];
@@ -623,6 +629,7 @@ async function saveOnboard() {
   if (error) { showToast('저장 실패 ㅠ 다시 해봐'); return; }
 
   profile = { ...profile, friend_name: fname, friend_nickname: nickname, avatar, talk_style: style, roles };
+  saveSession(profile); // ← 세션 저장 추가
   document.getElementById('onboard').classList.remove('show');
   startApp();
 }

@@ -11,7 +11,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="icon" type="image/png" href="icon.png">
-<link rel="icon" type="image/png" href="favicon.png">
+<link rel="icon" type="image/png" href="icon.png">
 <title>톡다리</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
 <!-- Supabase SDK -->
@@ -962,13 +962,21 @@ function renderDiary() {
 
 // ══════════ SETTINGS ══════════
 async function saveSettings() {
-  const fname = document.getElementById('s-fname').value.trim() || profile.friend_name;
-  const nickname = document.getElementById('s-nickname').value.trim() || profile.friend_nickname;
+  const fnameEl = document.getElementById('s-fname');
+  const nicknameEl = document.getElementById('s-nickname');
+  const fname = fnameEl?.value.trim() || profile.friend_name;
+  const nickname = nicknameEl?.value.trim() || profile.friend_nickname;
   const avatar = getTag('s-avatar') || profile.avatar;
   const style = getTag('s-style') || profile.talk_style;
-  await sb.from('profiles').update({ friend_name:fname, friend_nickname:nickname, avatar, talk_style:style }).eq('id', currentUser.id);
-  profile = { ...profile, friend_name:fname, friend_nickname:nickname, avatar, talk_style:style };
-  applyProfile();
+
+  const { error } = await sb.from('profiles')
+    .update({ friend_name: fname, friend_nickname: nickname, avatar, talk_style: style })
+    .eq('id', currentUser.id);
+
+  if (error) { showToast('저장 실패 ㅠ ' + error.message); return; }
+
+  profile = { ...profile, friend_name: fname, friend_nickname: nickname, avatar, talk_style: style };
+  saveSession(profile);
   showToast('설정 저장됐어 ✓');
 }
 

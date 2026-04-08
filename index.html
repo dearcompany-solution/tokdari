@@ -10,6 +10,7 @@
 <meta name="theme-color" content="#0d0d1a">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" type="image/png" href="icon.png">
 <link rel="icon" type="image/png" href="favicon.png">
 <title>톡다리</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
@@ -449,12 +450,8 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Noto San
 
     <div style="display:flex;flex-direction:column;gap:10px;">
       <div>
-        <div class="ob-label">친구 이름</div>
-        <input class="ob-input" id="nr-name" placeholder="예: 펭수, 민지, 악당이" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:10px 14px;color:var(--text);font-size:.88rem;outline:none;font-family:'Noto Sans KR',sans-serif;">
-      </div>
-      <div>
-        <div class="ob-label">내가 부를 호칭</div>
-        <input class="ob-input" id="nr-nickname" placeholder="예: 야, 친구야, 자기야..." style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:10px 14px;color:var(--text);font-size:.88rem;outline:none;font-family:'Noto Sans KR',sans-serif;">
+        <div class="ob-label">내가 부를 이름 (호칭)</div>
+        <input class="ob-input" id="nr-nickname" placeholder="예: 야, 펭수야, 자기야, 친구야..." style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:10px 14px;color:var(--text);font-size:.88rem;outline:none;font-family:'Noto Sans KR',sans-serif;">
       </div>
       <div>
         <div class="ob-label">아바타</div>
@@ -732,14 +729,12 @@ async function startApp() {
 }
 
 function applyProfile() {
-  const name = profile.friend_name || '펭수';
-  const nickname = profile.friend_nickname || '친구야';
-  document.getElementById('chat-avatar-emoji').textContent = profile.avatar || '🐧';
-  document.getElementById('chat-name').textContent = name;
-  document.getElementById('home-avatar').textContent = profile.avatar || '🐧';
-  document.getElementById('home-greeting').textContent = `야 ${nickname}~`;
-  document.getElementById('s-fname').value = name;
-  document.getElementById('s-nickname').value = nickname;
+  const el = (id) => document.getElementById(id);
+  if (el('home-username')) el('home-username').textContent = profile.name || '';
+  if (el('chat-avatar-emoji')) el('chat-avatar-emoji').textContent = '🐧';
+  if (el('chat-name')) el('chat-name').textContent = '';
+  if (el('s-fname')) el('s-fname').value = profile.friend_name || '';
+  if (el('s-nickname')) el('s-nickname').value = profile.friend_nickname || '';
 }
 
 // ══════════ MESSAGES (Supabase) ══════════
@@ -1088,21 +1083,20 @@ function closeNewRoomModal() {
 }
 
 async function createChatroom() {
-  const name = document.getElementById('nr-name').value.trim();
   const nickname = document.getElementById('nr-nickname').value.trim();
   const avatar = getTag('nr-avatar') || '🐧';
   const style = getTag('nr-style') || '친구같이 편하고 솔직하게, 반말로';
   const roles = getTags('nr-roles');
   const errEl = document.getElementById('nr-error');
 
-  if (!name) { errEl.textContent = '친구 이름을 입력해줘!'; return; }
   if (!nickname) { errEl.textContent = '호칭을 입력해줘!'; return; }
 
   errEl.textContent = '만드는 중...';
 
   const { data, error } = await sb.from('chatrooms').insert({
     user_id: currentUser.id,
-    name, avatar,
+    name: nickname,
+    avatar,
     talk_style: style,
     roles: roles.length ? roles : ['친구'],
     nickname

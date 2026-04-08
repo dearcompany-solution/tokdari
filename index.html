@@ -522,14 +522,14 @@ async function doSignup() {
 
   // 비밀번호 해시 없이 간단 저장 (토이 프로젝트용)
   const { error: pErr } = await sb.from('profiles').insert({
-    username, name, phone,
-    password_hash: password, // 실제 서비스라면 절대 평문 저장 X
-    friend_name: '펭수',
-    friend_nickname: '친구야',
-    avatar: '🐧',
-    talk_style: '친구같이 편하고 솔직하게, 반말로',
-    roles: ['감정 쓰레기통', '욕받이', '개인비서']
-  });
+  username, name, phone,
+  password_hash: password,
+  friend_name: '펭수',
+  friend_nickname: '친구야',
+  avatar: '🐧',
+  talk_style: '친구같이 편하고 솔직하게, 반말로',
+  roles: ['감정 쓰레기통', '욕받이', '개인비서']
+});
 
   if (pErr) { errEl.textContent = '가입 실패: ' + pErr.message; return; }
 

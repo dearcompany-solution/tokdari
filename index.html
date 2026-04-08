@@ -472,8 +472,10 @@ let selectedDiaryMood = '😊';
 // ══════════ INIT ══════════
 window.addEventListener('load', async () => {
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
-  }
+  navigator.serviceWorker.getRegistrations().then(regs => {
+    regs.forEach(reg => reg.unregister());
+  });
+}
   // 로그인 상태 확인
   const { data: { session } } = await sb.auth.getSession();
   if (session) {

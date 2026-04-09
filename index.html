@@ -1944,16 +1944,19 @@ function clearImgPreview(){
 function formatMessageContent(text){
   if(!text||typeof text!=='string') return '';
   const urlPattern = /(https?:\/\/[^\s<>"]+)/g;
-  return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(urlPattern, url=>{
-      const rawUrl = url.replace(/&amp;/g,'&');
-      if(/youtube\.com|youtu\.be/i.test(rawUrl)){
-        const m=rawUrl.match(/(?:v=|youtu\.be\/)([^&?/\s]+)/);
-        const vid=m?m[1]:'';
-        return `<a href="${rawUrl}" target="_blank" style="color:var(--kakao);text-decoration:underline;word-break:break-all">🎬 ${url}</a>${vid?`<br><img src="https://img.youtube.com/vi/${vid}/mqdefault.jpg" style="max-width:200px;border-radius:8px;margin-top:4px;cursor:pointer;display:block" onclick="window.open('${rawUrl}','_blank')">` : ''}`;
-      }
-      return `<a href="${rawUrl}" target="_blank" style="color:var(--kakao);text-decoration:underline;word-break:break-all">🔗 ${url}</a>`;
-    });
+  const escaped = text
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;');
+  return escaped.replace(urlPattern, url=>{
+    const rawUrl = url.replace(/&amp;/g,'&');
+    if(/youtube\.com|youtu\.be/i.test(rawUrl)){
+      const m=rawUrl.match(/(?:v=|youtu\.be\/)([^&?/\s]+)/);
+      const vid=m?m[1]:'';
+      return `<a href="${rawUrl}" target="_blank" style="color:var(--kakao);text-decoration:underline;word-break:break-all">🎬 ${url}</a>${vid?`<br><img src="https://img.youtube.com/vi/${vid}/mqdefault.jpg" style="max-width:200px;border-radius:8px;margin-top:4px;cursor:pointer;display:block" onclick="window.open('${rawUrl}','_blank')">` : ''}`;
+    }
+    return `<a href="${rawUrl}" target="_blank" style="color:var(--kakao);text-decoration:underline;word-break:break-all">🔗 ${url}</a>`;
+  });
 }
 
 function escapeHtml(text){

@@ -251,11 +251,29 @@ body.light{
   --header:#ffffff;
   --border:rgba(0,0,0,0.08);
   --divider:rgba(0,0,0,0.06);
+  background:#f2f3f5;
 }
+body.light #splash{background:var(--kakao)}
 body.light #chat-messages{background:#b2c7d9}
 body.light .bubble.ai{background:#ffffff;color:#191919}
 body.light .room-card:active{background:#e8e8e8}
-body.light .app-header{box-shadow:0 1px 3px rgba(0,0,0,.08)}
+body.light .app-header{background:#ffffff;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+body.light .tab-bar{background:#ffffff;border-top:1px solid rgba(0,0,0,.08)}
+body.light .input-bar{background:#ffffff;border-top:1px solid rgba(0,0,0,.08)}
+body.light .input-bar textarea{background:#f2f3f5;border-color:rgba(0,0,0,.1);color:#191919}
+body.light .modal-sheet{background:#ffffff}
+body.light .auth-wrap{background:#f2f3f5}
+body.light .auth-box{background:#ffffff;border-color:rgba(0,0,0,.08)}
+body.light .auth-input{background:#f2f3f5;border-color:rgba(0,0,0,.1);color:#191919}
+body.light .settings-section{background:#ffffff}
+body.light .ob-box{background:#ffffff}
+body.light .tag{color:#555;border-color:rgba(0,0,0,.15)}
+body.light .hbtn{color:#555}
+body.light .hdr-title{color:#191919}
+body.light .room-name{color:#191919}
+body.light .cal-wrap{background:#ffffff}
+body.light .cal-day{color:#555}
+body.light .schedule-item{background:#ffffff;border-color:rgba(0,0,0,.08)}
 </style>
 </head>
 <body>
@@ -1202,7 +1220,14 @@ ${roles}
 4. 감정적일 때: 공감 먼저, 해결책 나중에
 5. AI라고 절대 티내지 마
 6. 말버릇 설정대로 자연스럽게 표현해
-7. 장소/음식/인물/일정 언급되면 자연스럽게 더 캐물어봐`;
+7. 장소/음식/인물/일정 언급되면 자연스럽게 더 캐물어봐
+
+[최신 정보 규칙]
+- 오늘 날짜: ${new Date().toLocaleDateString('ko-KR')}
+- 뉴스/트렌드/연예/스포츠 관련 질문엔 "내가 알기론~", "최근에 봤는데~" 식으로 자연스럽게 답해
+- 2025~2026년 기준 최신 트렌드, 유행어, 밈 적극 활용해
+- 모르는 최신 정보는 "나도 잘 모르겠는데 같이 찾아볼까?" 라고 해
+- 절대 오래된 정보를 확정적으로 말하지 마`;
 }
 
 async function sendFirstMessage(){
@@ -1270,7 +1295,7 @@ async function callGPT(){
         }))
       ]})
     });
-    removeTyping(typingId);
+    
     if(!resp.ok){
       const err=await resp.json().catch(()=>({}));
       appendMessage('ai',`앗 오류났어 😅 ${err.error||'다시 해봐'}`);
@@ -1279,9 +1304,13 @@ async function callGPT(){
       if(!data.choices?.[0]){appendMessage('ai','응답을 못 받았어 ㅠ 다시 해봐');}
       else{
         const reply=data.choices[0].message.content.trim();
-        appendMessage('ai',reply);
-        messages.push({role:'assistant',content:reply});
-        await saveMessage('assistant',reply);
+      // 답장 길이에 따라 딜레이 (짧으면 0.5~1.5초, 길면 1.5~3초)
+      const delay = Math.min(500 + reply.length * 15, 3000);
+      await new Promise(r => setTimeout(r, delay));
+      removeTyping(typingId);
+      appendMessage('ai',reply);
+      messages.push({role:'assistant',content:reply});
+      await saveMessage('assistant',reply);
         autoExtractSchedule(messages[messages.length-2]?.content||'',reply);
       }
     }
@@ -1310,17 +1339,8 @@ function appendMessage(role, content, imgSrc){
   if(imgSrc){
     const img=document.createElement('img');img.src=imgSrc;img.style.maxWidth='100%';img.style.borderRadius='10px';
     bubble.appendChild(img);
-  } else if(typeof content==='string' && isYoutubeUrl(content)){
-    const videoId=getYoutubeId(content);
-    bubble.innerHTML=`
-      <a href="${content}" target="_blank" style="color:inherit;text-decoration:underline;font-size:.85rem;word-break:break-all">🎬 ${content}</a>
-      <div style="margin-top:6px;border-radius:10px;overflow:hidden;cursor:pointer" onclick="window.open('${content}','_blank')">
-        <img src="https://img.youtube.com/vi/${videoId}/mqdefault.jpg" style="width:100%;border-radius:8px;display:block">
-      </div>`;
-  } else if(typeof content==='string' && isUrl(content)){
-    bubble.innerHTML=`<a href="${content}" target="_blank" style="color:inherit;text-decoration:underline;word-break:break-all">🔗 ${content}</a>`;
-  } else {
-    bubble.textContent = typeof content==='string' ? content : '';
+  } else if(typeof content==='string'){
+    bubble.innerHTML = formatMessageContent(content);
   }
 
   const timeEl=document.createElement('div');timeEl.className='msg-time';timeEl.textContent=time;
@@ -1865,6 +1885,34 @@ function clearImgPreview(){
   pendingImage=null;
   const wrap=document.getElementById('img-preview-wrap');
   if(wrap) wrap.innerHTML='';
+}
+  // ══════════ MESSAGE FORMAT ══════════
+function formatMessageContent(text){
+  if(!text) return '';
+  // URL 패턴 감지
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const parts = text.split(urlRegex);
+  return parts.map(part => {
+    if(!urlRegex.test(part) && !part.startsWith('http')) {
+      // 일반 텍스트 - XSS 방지
+      return escapeHtml(part);
+    }
+    if(isYoutubeUrl(part)){
+      const videoId = getYoutubeId(part);
+      return `<a href="${part}" target="_blank" style="color:inherit;text-decoration:underline;font-size:.85rem;word-break:break-all">🎬 ${part}</a>
+        ${videoId ? `<div style="margin-top:6px;cursor:pointer" onclick="window.open('${part}','_blank')">
+          <img src="https://img.youtube.com/vi/${videoId}/mqdefault.jpg" style="width:100%;border-radius:8px;display:block;max-width:240px">
+        </div>` : ''}`;
+    }
+    if(isUrl(part)){
+      return `<a href="${part}" target="_blank" style="color:inherit;text-decoration:underline;word-break:break-all">🔗 ${part}</a>`;
+    }
+    return escapeHtml(part);
+  }).join('');
+}
+
+function escapeHtml(text){
+  return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
   // ══════════ URL HELPERS ══════════
 function isUrl(text){

@@ -292,9 +292,8 @@ body.light .schedule-item{background:#ffffff;border-color:rgba(0,0,0,.08)}
   <div class="auth-sub">가입하고 나만의 AI 친구를 만들어봐!</div>
   <div class="auth-box">
     <div><div class="auth-label">이름</div><input class="auth-input" id="su-name" type="text" placeholder="홍길동" autocomplete="name"></div>
-    <div><div class="auth-label">전화번호</div><input class="auth-input" id="su-phone" type="tel" placeholder="010-0000-0000"></div>
-    <div><div class="auth-label">아이디</div><input class="auth-input" id="su-username" type="text" placeholder="영문/숫자 조합" autocomplete="username"></div>
-    <div><div class="auth-label">비밀번호 (4자리 숫자)</div><input class="auth-input" id="su-password" type="password" placeholder="••••" maxlength="4" inputmode="numeric" autocomplete="new-password"></div>
+    <div><div class="auth-label">이메일</div><input class="auth-input" id="su-email" type="email" placeholder="example@email.com" autocomplete="email"></div>
+<div><div class="auth-label">비밀번호 (6자리 이상)</div><input class="auth-input" id="su-password" type="password" placeholder="••••••" autocomplete="new-password"></div>
     <div class="auth-error" id="su-error"></div>
   </div>
   <button class="auth-btn" onclick="doSignup()">가입하기 →</button>
@@ -307,8 +306,8 @@ body.light .schedule-item{background:#ffffff;border-color:rgba(0,0,0,.08)}
   <div class="auth-title">다시 왔구나!</div>
   <div class="auth-sub">아이디랑 비밀번호 입력해줘</div>
   <div class="auth-box">
-    <div><div class="auth-label">아이디</div><input class="auth-input" id="li-username" type="text" placeholder="아이디 입력" autocomplete="username"></div>
-    <div><div class="auth-label">비밀번호</div><input class="auth-input" id="li-password" type="password" placeholder="••••" maxlength="4" inputmode="numeric" autocomplete="current-password"></div>
+    <div><div class="auth-label">이메일</div><input class="auth-input" id="li-email" type="email" placeholder="이메일 입력" autocomplete="email"></div>
+<div><div class="auth-label">비밀번호</div><input class="auth-input" id="li-password" type="password" placeholder="비밀번호" autocomplete="current-password"></div>
     <div class="auth-error" id="li-error"></div>
   </div>
   <button class="auth-btn" onclick="doLogin()">로그인 →</button>
@@ -715,42 +714,61 @@ function showLogin(){
 
 async function doSignup(){
   const name=document.getElementById('su-name').value.trim();
-  const phone=document.getElementById('su-phone').value.trim();
-  const username=document.getElementById('su-username').value.trim();
+  const email=document.getElementById('su-email').value.trim();
   const password=document.getElementById('su-password').value.trim();
   const errEl=document.getElementById('su-error');
-  if(!name||!phone||!username||!password){errEl.textContent='모든 항목을 입력해줘!';return;}
-  if(password.length!==4||!/^\d+$/.test(password)){errEl.textContent='비밀번호는 숫자 4자리야!';return;}
-  if(username.length<3){errEl.textContent='아이디는 3자 이상이어야 해!';return;}
+
+  if(!name||!email||!password){errEl.textContent='모든 항목을 입력해줘!';return;}
+  if(password.length<6){errEl.textContent='비밀번호는 6자리 이상이야!';return;}
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){errEl.textContent='이메일 형식이 맞지 않아!';return;}
+
   errEl.textContent='가입 중...';
-  const{data:ex}=await sb.from('profiles').select('id').eq('username',username).maybeSingle();
-  if(ex){errEl.textContent='이미 있는 아이디야!';return;}
-  const{error:pErr}=await sb.from('profiles').insert({
-    username,name,phone,password_hash:password,
-    friend_name:'지수',friend_nickname:'친구야',
-    avatar:'👦 찐친남사친',talk_style:'친구같이 편하고 솔직하게, 반말로',
-    roles:['감정 쓰레기통','개인비서']
+
+  const resp=await fetch('/api/auth',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      action:'signup',
+      email, password, name,
+      username: email.split('@')[0]
+    })
   });
-  if(pErr){errEl.textContent='가입 실패: '+pErr.message;return;}
-  const{data}=await sb.from('profiles').select('*').eq('username',username).eq('password_hash',password).maybeSingle();
-  if(!data){errEl.textContent='가입 후 로그인 실패, 다시 시도해줘';return;}
-  profile=data;currentUser={id:data.id};
-  document.getElementById('signup-screen').classList.remove('show');
-  document.getElementById('onboard').classList.add('show');
+
+  const result=await resp.json();
+  if(!resp.ok){errEl.textContent=result.error||'가입 실패 ㅠ';return;}
+
+  errEl.textContent='';
+  // 가입 후 바로 로그인
+  await doLoginWithEmail(email, password);
 }
 
 async function doLogin(){
-  const username=document.getElementById('li-username').value.trim();
+  const email=document.getElementById('li-email').value.trim();
   const password=document.getElementById('li-password').value.trim();
   const errEl=document.getElementById('li-error');
-  if(!username||!password){errEl.textContent='아이디랑 비밀번호 입력해줘!';return;}
+  if(!email||!password){errEl.textContent='이메일이랑 비밀번호 입력해줘!';return;}
   errEl.textContent='로그인 중...';
-  const{data,error}=await sb.from('profiles').select('*').eq('username',username).eq('password_hash',password).maybeSingle();
-  if(error){errEl.textContent='오류: '+error.message;return;}
-  if(!data){errEl.textContent='아이디 또는 비밀번호가 틀렸어!';return;}
-  profile=data;currentUser={id:data.id};
-  saveSession(data);
-  errEl.textContent='';
+  await doLoginWithEmail(email, password, errEl);
+}
+
+async function doLoginWithEmail(email, password, errEl){
+  const resp=await fetch('/api/auth',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({action:'login', email, password})
+  });
+
+  const result=await resp.json();
+  if(!resp.ok){
+    if(errEl) errEl.textContent=result.error||'로그인 실패 ㅠ';
+    return;
+  }
+
+  profile=result.profile;
+  currentUser={id:result.profile.id};
+  saveSession({...result.profile, token:result.token});
+
+  if(errEl) errEl.textContent='';
   hideSplash();
   await startApp();
 }

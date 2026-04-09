@@ -595,10 +595,22 @@ const VAPID_PUBLIC_KEY = 'BIhrfjbJS3R9LPm8zha8VfPHkebk68TqF5h4XhOJ5KaO3blVj2KnCZ
 
 // ══════════ SESSION ══════════
 function saveSession(p){
-  const plain={id:p.id,username:p.username,name:p.name,phone:p.phone,
-    friend_name:p.friend_name,friend_nickname:p.friend_nickname,
-    avatar:p.avatar,talk_style:p.talk_style,roles:p.roles};
-  localStorage.setItem('tokdari_v2',JSON.stringify(plain));
+  try {
+    const plain = {
+      id: String(p.id || ''),
+      username: String(p.username || ''),
+      name: String(p.name || ''),
+      phone: String(p.phone || ''),
+      friend_name: String(p.friend_name || ''),
+      friend_nickname: String(p.friend_nickname || ''),
+      avatar: String(p.avatar || ''),
+      talk_style: String(p.talk_style || ''),
+      roles: Array.isArray(p.roles) ? [...p.roles] : []
+    };
+    localStorage.setItem('tokdari_v2', JSON.stringify(plain));
+  } catch(e) {
+    console.error('세션 저장 실패:', e);
+  }
 }
 function loadSession(){try{return JSON.parse(localStorage.getItem('tokdari_v2'));}catch{return null;}}
 function clearSession(){localStorage.removeItem('tokdari_v2');}

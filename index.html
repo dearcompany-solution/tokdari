@@ -773,26 +773,27 @@ async function loadChatrooms(){
 function renderHomeList(){
   const list=document.getElementById('home-room-list');
   if(!list) return;
+  
   if(!chatrooms.length){
     list.innerHTML='<div class="empty-rooms">🐣<br>아직 친구가 없어!<br>채팅방 탭에서 + 버튼 눌러봐</div>';
     return;
   }
-  // updated_at 또는 created_at 기준 최신순 정렬
+  
+  // 최신순 정렬 유지
   const sorted=[...chatrooms].sort((a,b)=>{
     const da=new Date(a.updated_at||a.created_at||0);
     const db=new Date(b.updated_at||b.created_at||0);
     return db-da;
   });
+  
+  // 마지막 메시지와 시간을 빼고, 이름과 삭제 버튼만 나오도록 수정
   list.innerHTML=sorted.map(room=>`
     <div class="room-card" onclick="openChat(${room.id})">
       <div class="room-avatar">${(room.avatar||'👦').split(' ')[0]}</div>
-      <div class="room-info">
-        <div class="room-name">${room.name||room.nickname||'친구'}</div>
-        <div class="room-last">${room.last_msg||'대화를 시작해봐 👋'}</div>
+      <div class="room-info" style="display:flex; align-items:center;">
+        <div class="room-name" style="margin-bottom:0; font-size:1.05rem;">${room.name||room.nickname||'친구'}</div>
       </div>
-      <div class="room-meta">
-        <div class="room-time">${room.updated_at?formatTime(room.updated_at):''}</div>
-      </div>
+      <button class="room-delete" onclick="event.stopPropagation();deleteRoom(${room.id})">삭제</button>
     </div>`).join('');
 }
 

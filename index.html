@@ -66,14 +66,17 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Noto San
 #app.show{display:flex}
 
 /* 탭 콘텐츠 영역 (탭바 포함) */
-#tab-content{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative}
+#tab-content{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0;}
+
 
 /* 일반 화면 (홈/기록/설정) */
-.screen{display:none;flex-direction:column;flex:1;overflow:hidden}
+.screen{display:none;flex-direction:column;flex:1;overflow:hidden;min-height:0;}
+
 .screen.active{display:flex}
 
 /* 홈화면 */
-#home-screen{display:none;flex-direction:column;flex:1;overflow:hidden}
+#home-screen{display:none;flex-direction:column;flex:1;overflow:hidden;min-height:0;}
+
 #home-screen.active{display:flex}
 
 /* 채팅 화면 - 전체화면으로 탭바 위 덮기 */
@@ -253,6 +256,35 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Noto San
 #chat-screen.trash .bubble.ai{background:#1a0505}
 #chat-screen.trash .input-bar{background:#1a0505;border-top-color:rgba(239,68,68,.3)}
 #chat-screen.trash .input-bar textarea{background:#2a0808;border-color:rgba(239,68,68,.3)}
+/* FAB - 홈에서만 보임 */
+.fab{position:fixed;bottom:80px;right:16px;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,var(--purple),var(--pink));border:none;color:#fff;font-size:1.5rem;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(124,58,237,.4);z-index:10}
+
+/* 캘린더 */
+.cal-wrap{background:var(--bg2);border-bottom:1px solid var(--border);padding:.75rem;flex-shrink:0}
+.cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem}
+.cal-title{font-size:.95rem;font-weight:700}
+.cal-nav{background:none;border:none;color:var(--text2);font-size:1.2rem;cursor:pointer;padding:4px 10px}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}
+.cal-dow{font-size:.65rem;color:var(--text3);padding:4px 0;font-weight:500}
+.cal-day{font-size:.78rem;padding:5px 2px;border-radius:8px;cursor:pointer;color:var(--text2);position:relative}
+.cal-day.today{background:rgba(124,58,237,.25);color:var(--pl);font-weight:700}
+.cal-day.selected{background:var(--purple);color:#fff;font-weight:700}
+.cal-day.has-event::after{content:'';width:4px;height:4px;background:var(--pink);border-radius:50%;position:absolute;bottom:2px;left:50%;transform:translateX(-50%)}
+.cal-day.other-month{opacity:.3}
+
+/* 일정 목록 */
+.schedule-list{flex:1;overflow-y:auto;padding:.75rem;display:flex;flex-direction:column;gap:8px}
+.schedule-item{background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--purple);border-radius:14px;padding:12px 14px;display:flex;align-items:flex-start;gap:10px}
+.schedule-item.done{opacity:.5}
+.schedule-item.done .si-title{text-decoration:line-through}
+.si-check{width:22px;height:22px;border-radius:50%;border:2px solid var(--border);flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.75rem;margin-top:1px}
+.si-check.checked{background:var(--purple);border-color:var(--purple);color:#fff}
+.si-body{flex:1;min-width:0}
+.si-title{font-size:.88rem;font-weight:600;margin-bottom:3px}
+.si-date{font-size:.72rem;color:var(--text3)}
+.si-del{background:none;border:none;color:var(--text3);font-size:.9rem;cursor:pointer;padding:2px 6px;flex-shrink:0}
+.empty-schedule{text-align:center;color:var(--text3);font-size:.85rem;padding:3rem 1rem;line-height:1.8}
+#schedule-screen{background:var(--bg);}
 </style>
 </head>
 <body>
@@ -398,71 +430,69 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Noto San
         <div style="margin-left:auto;font-size:.75rem;color:var(--text3)" id="home-username"></div>
       </div>
       <div id="chatroom-list" style="flex:1;overflow-y:auto;padding:.75rem;display:flex;flex-direction:column;gap:10px;"></div>
-      <button class="diary-fab" id="new-room-fab" onclick="openNewRoomModal()">+</button>
+      <button class="fab" id="new-room-fab" onclick="openNewRoomModal()">+</button>
+
     </div>
 
   <!-- 다이어리 -->
-  <div id="diary-screen" class="screen">
-    <div class="app-header">
-      <div style="font-size:1.1rem;font-weight:700;">감정 다이어리 📔</div>
-      <div style="margin-left:auto;font-size:.75rem;color:var(--text3);">나만 볼 수 있어요 🔒</div>
-    </div>
-    <div class="diary-list" id="diary-list"></div>
-    <button class="diary-fab" id="diary-add-fab" onclick="openDiaryModal()">+</button>
+  <div id="schedule-screen" class="screen">
+  <div class="app-header">
+    <div style="font-size:1.1rem;font-weight:700;">일정 📅</div>
+    <div style="margin-left:auto;font-size:.72rem;color:var(--text3);">대화에서 자동 저장</div>
   </div>
+  <!-- 캘린더 -->
+  <div class="cal-wrap">
+    <div class="cal-header">
+      <button class="cal-nav" onclick="calPrev()">‹</button>
+      <div class="cal-title" id="cal-title"></div>
+      <button class="cal-nav" onclick="calNext()">›</button>
+    </div>
+    <div class="cal-grid">
+      <div class="cal-dow" style="color:#f87171">일</div>
+      <div class="cal-dow">월</div><div class="cal-dow">화</div>
+      <div class="cal-dow">수</div><div class="cal-dow">목</div>
+      <div class="cal-dow">금</div>
+      <div class="cal-dow" style="color:#a78bfa">토</div>
+    </div>
+    <div class="cal-grid" id="cal-days"></div>
+  </div>
+  <!-- 일정 목록 -->
+  <div class="schedule-list" id="schedule-list"></div>
+</div>
 
   <!-- 설정 -->
   <div id="settings-screen" class="screen">
     <div class="app-header"><div style="font-size:1.1rem;font-weight:700;">설정 ⚙️</div></div>
-    <div class="settings-body">
-      <div class="settings-section">
-        <h3>톡다리 설정</h3>
-        <div class="ob-label">톡다리 이름</div>
-        <input class="settings-input" id="s-fname" value="지수">
-        <div class="ob-label">톡다리 이름 (내가 부를 호칭)</div>
-        <input class="settings-input" id="s-nickname" value="친구야" placeholder="예: 야, 펭수야, 자기야...">
-        <div class="ob-label">페르소나</div>
-        <div class="tag-wrap" id="s-avatar">
-          <button class="tag on" data-val="👦 찐친남사친">👦 찐친남사친</button>
-          <button class="tag" data-val="👧 찐친여사친">👧 찐친여사친</button>
-          <button class="tag" data-val="🧑‍💼 직장선배">🧑‍💼 직장선배</button>
-          <button class="tag" data-val="🧑‍⚕️ 간호사친구">🧑‍⚕️ 간호사친구</button>
-          <button class="tag" data-val="🧑‍🎓 공부도사">🧑‍🎓 공부도사</button>
-          <button class="tag" data-val="🤣 개그맨">🤣 개그맨</button>
-        </div>
-        <div class="ob-label">말투</div>
-        <div class="tag-wrap" id="s-style">
-          <button class="tag on" data-val="친구같이 편하고 솔직하게, 반말로">친구같이</button>
-          <button class="tag" data-val="욕도 쓰면서 찐친처럼, 반말로">욕쟁이 찐친</button>
-          <button class="tag" data-val="다정하고 따뜻하게, 반말로">다정하게</button>
-          <button class="tag" data-val="직설적이고 팩트만, 반말로">직설적으로</button>
-          <button class="tag" data-val="개그맨처럼 웃기게, 반말로">개그맨처럼</button>
-        </div>
-      </div>
-      <div class="settings-section">
-        <h3>알림</h3>
-        <div class="toggle-row">
-          <span class="toggle-label">톡다리가 먼저 연락</span>
-          <div class="toggle on" onclick="this.classList.toggle('on')"><div class="toggle-thumb"></div></div>
-        </div>
-      </div>
-      <button class="save-settings-btn" onclick="saveSettings()">설정 저장 ✓</button>
-      <button class="logout-btn" onclick="doLogout()">로그아웃</button>
+    <!-- 교체 -->
+<div class="settings-body">
+  <div class="settings-section">
+    <h3>알림 설정</h3>
+    <div class="toggle-row">
+      <span class="toggle-label">앱 알림 허용</span>
+      <div class="toggle on" id="toggle-notif" onclick="this.classList.toggle('on')"><div class="toggle-thumb"></div></div>
     </div>
+    <div class="toggle-row">
+      <span class="toggle-label">톡다리가 먼저 선톡</span>
+      <div class="toggle on" id="toggle-ping" onclick="this.classList.toggle('on')"><div class="toggle-thumb"></div></div>
+    </div>
+  </div>
+  <button class="logout-btn" onclick="doLogout()">로그아웃</button>
+</div>
   </div>
 
   <!-- 탭바 -->
-  <div class="tab-bar">
-    <button class="tab-item active" id="tab-home" onclick="switchTab('home')">
-      <span class="ti">🏠</span><span class="tl">홈</span>
-    </button>
-    <button class="tab-item" id="tab-diary" onclick="switchTab('diary')">
-      <span class="ti">📔</span><span class="tl">기록</span>
-    </button>
-    <button class="tab-item" id="tab-settings" onclick="switchTab('settings')">
-      <span class="ti">⚙️</span><span class="tl">설정</span>
-    </button>
-  </div>
+  <!-- 교체 -->
+<div class="tab-bar">
+  <button class="tab-item active" id="tab-home" onclick="switchTab('home')">
+    <span class="ti">🏠</span><span class="tl">홈</span>
+  </button>
+  <button class="tab-item" id="tab-schedule" onclick="switchTab('schedule')">
+    <span class="ti">📅</span><span class="tl">일정</span>
+  </button>
+  <button class="tab-item" id="tab-settings" onclick="switchTab('settings')">
+    <span class="ti">⚙️</span><span class="tl">설정</span>
+  </button>
+</div>
   </div><!-- tab-content end -->
 </div>
 <!-- 채팅방 생성 모달 -->
@@ -552,7 +582,19 @@ const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 // 세션 저장/복원
   function saveSession(profileData) {
-  localStorage.setItem('tokdari_session', JSON.stringify(profileData));
+  // Supabase 내부 객체 제거하고 순수 데이터만 저장
+  const plain = {
+    id: profileData.id,
+    username: profileData.username,
+    name: profileData.name,
+    phone: profileData.phone,
+    friend_name: profileData.friend_name,
+    friend_nickname: profileData.friend_nickname,
+    avatar: profileData.avatar,
+    talk_style: profileData.talk_style,
+    roles: profileData.roles,
+  };
+  localStorage.setItem('tokdari_session', JSON.stringify(plain));
 }
 function loadSession() {
   try { return JSON.parse(localStorage.getItem('tokdari_session')); } catch { return null; }
@@ -741,8 +783,9 @@ async function startApp() {
 
   applyProfile();
   await loadChatrooms();
-  await loadDiary();
-  updateStats();
+await loadDiary();
+await loadSchedule();
+updateStats();
   restoreTab();
   requestNotifPermission();
   scheduleRandomPing();
@@ -1146,7 +1189,131 @@ function renderDiary() {
       <div class="de-text">${e.content}</div>
     </div>`).join('');
 }
+// ══════════ CALENDAR & SCHEDULE ══════════
+let scheduleItems = [];
+let calCurrentDate = new Date();
+let calSelectedDate = null;
 
+async function loadSchedule() {
+  const { data } = await sb.from('schedules')
+    .select('*')
+    .eq('user_id', currentUser.id)
+    .order('due_date', { ascending: true });
+  if(data) scheduleItems = data;
+}
+
+async function addScheduleItem(title, dueDate) {
+  const { data, error } = await sb.from('schedules').insert({
+    user_id: currentUser.id,
+    title,
+    due_date: dueDate || null,
+    done: false
+  }).select().single();
+  if(!error && data) {
+    scheduleItems.push(data);
+    scheduleItems.sort((a,b) => {
+      if(!a.due_date) return 1;
+      if(!b.due_date) return -1;
+      return new Date(a.due_date) - new Date(b.due_date);
+    });
+    if(currentTab === 'schedule') { renderCalendar(); renderScheduleList(); }
+  }
+}
+
+async function toggleScheduleDone(id) {
+  const item = scheduleItems.find(s => s.id === id);
+  if(!item) return;
+  const newDone = !item.done;
+  await sb.from('schedules').update({ done: newDone }).eq('id', id);
+  item.done = newDone;
+  renderScheduleList();
+}
+
+async function deleteScheduleItem(id) {
+  await sb.from('schedules').delete().eq('id', id);
+  scheduleItems = scheduleItems.filter(s => s.id !== id);
+  renderCalendar();
+  renderScheduleList();
+}
+
+function renderCalendar() {
+  const year = calCurrentDate.getFullYear();
+  const month = calCurrentDate.getMonth();
+  const titleEl = document.getElementById('cal-title');
+  const daysEl = document.getElementById('cal-days');
+  if(!titleEl || !daysEl) return;
+
+  titleEl.textContent = `${year}년 ${month+1}월`;
+  const firstDay = new Date(year, month, 1).getDay();
+  const lastDate = new Date(year, month+1, 0).getDate();
+  const today = new Date();
+  const prevLastDate = new Date(year, month, 0).getDate();
+
+  const eventDates = new Set(
+    scheduleItems.filter(s => s.due_date).map(s => s.due_date.slice(0,10))
+  );
+
+  let html = '';
+  for(let i = firstDay - 1; i >= 0; i--)
+    html += `<div class="cal-day other-month">${prevLastDate - i}</div>`;
+  for(let day = 1; day <= lastDate; day++) {
+    const ds = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const isToday = today.getFullYear()===year && today.getMonth()===month && today.getDate()===day;
+    const isSel = calSelectedDate === ds;
+    const hasEv = eventDates.has(ds);
+    const cls = ['cal-day', isToday?'today':'', isSel?'selected':'', hasEv?'has-event':''].filter(Boolean).join(' ');
+    html += `<div class="${cls}" onclick="selectCalDay('${ds}')">${day}</div>`;
+  }
+  const remain = (firstDay + lastDate) % 7;
+  if(remain > 0) for(let i = 1; i <= 7-remain; i++)
+    html += `<div class="cal-day other-month">${i}</div>`;
+  daysEl.innerHTML = html;
+}
+
+function selectCalDay(ds) {
+  calSelectedDate = calSelectedDate === ds ? null : ds;
+  renderCalendar(); renderScheduleList();
+}
+function calPrev() {
+  calCurrentDate = new Date(calCurrentDate.getFullYear(), calCurrentDate.getMonth()-1, 1);
+  renderCalendar(); renderScheduleList();
+}
+function calNext() {
+  calCurrentDate = new Date(calCurrentDate.getFullYear(), calCurrentDate.getMonth()+1, 1);
+  renderCalendar(); renderScheduleList();
+}
+
+function renderScheduleList() {
+  const el = document.getElementById('schedule-list');
+  if(!el) return;
+  const year = calCurrentDate.getFullYear();
+  const month = calCurrentDate.getMonth();
+
+  const filtered = scheduleItems.filter(s => {
+    if(!s.due_date) return !calSelectedDate;
+    const d = new Date(s.due_date);
+    if(calSelectedDate) return s.due_date.slice(0,10) === calSelectedDate;
+    return d.getFullYear()===year && d.getMonth()===month;
+  });
+
+  if(!filtered.length) {
+    el.innerHTML = `<div class="empty-schedule">${calSelectedDate ? '이날 일정이 없어 😊' : '이번달 일정이 없어!<br>대화하다가 일정을 말하면<br>자동으로 저장돼 ✨'}</div>`;
+    return;
+  }
+  el.innerHTML = filtered.map(s => {
+    const dl = s.due_date
+      ? new Date(s.due_date).toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'short'})
+      : '날짜 미정';
+    return `<div class="schedule-item${s.done?' done':''}">
+      <div class="si-check${s.done?' checked':''}" onclick="toggleScheduleDone(${s.id})">${s.done?'✓':''}</div>
+      <div class="si-body">
+        <div class="si-title">${s.title}</div>
+        <div class="si-date">📅 ${dl}</div>
+      </div>
+      <button class="si-del" onclick="deleteScheduleItem(${s.id})">✕</button>
+    </div>`;
+  }).join('');
+}
 // ══════════ SETTINGS ══════════
 async function saveSettings() {
   const fnameEl = document.getElementById('s-fname');
@@ -1187,36 +1354,46 @@ function askSchedule() {
 }
 
 // ══════════ TAB ══════════
+// 기존 전체 교체
 let currentTab = 'home';
 function switchTab(tab) {
   currentTab = tab;
   sessionStorage.setItem('currentTab', tab);
-
-  // 탭바 active 초기화
   document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
 
   if(tab === 'chat') {
-    // 채팅은 전체화면 오버레이
     document.getElementById('chat-screen').classList.add('active');
     setTimeout(()=>scrollToBottom(), 100);
     return;
   }
 
-  // 채팅화면 닫기
   document.getElementById('chat-screen').classList.remove('active');
-
-  // 일반 화면 전환
   document.getElementById('home-screen').classList.remove('active');
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+
+  // FAB 제어
+  const fab = document.getElementById('new-room-fab');
+  if(fab) fab.style.display = 'none';
 
   if(tab === 'home') {
     document.getElementById('home-screen').classList.add('active');
     document.getElementById('tab-home').classList.add('active');
-  } else {
-    document.getElementById(tab + '-screen').classList.add('active');
-    const tabBtn = document.getElementById('tab-' + tab);
-    if(tabBtn) tabBtn.classList.add('active');
+    if(fab) fab.style.display = 'flex';
+  } else if(tab === 'schedule') {
+    document.getElementById('schedule-screen').classList.add('active');
+    document.getElementById('tab-schedule').classList.add('active');
+    renderCalendar();
+    renderScheduleList();
+  } else if(tab === 'settings') {
+    document.getElementById('settings-screen').classList.add('active');
+    document.getElementById('tab-settings').classList.add('active');
   }
+}
+function restoreTab() {
+  const saved = sessionStorage.getItem('currentTab') || 'home';
+  if(saved === 'chat' && !currentRoom) switchTab('home');
+  else if(saved === 'diary') switchTab('home');
+  else switchTab(saved);
 }
 function restoreTab() {
   const saved = sessionStorage.getItem('currentTab') || 'home';

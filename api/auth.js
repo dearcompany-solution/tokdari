@@ -32,11 +32,11 @@ module.exports = async function handler(req, res) {
         username: username || email.split('@')[0],
         name,
         email,
-        friend_name: '지수',
-        friend_nickname: '친구야',
-        avatar: '👦 찐친남사친',
-        talk_style: '친구같이 편하고 솔직하게, 반말로',
-        roles: ['감정 쓰레기통', '개인비서']
+        friend_name: '',
+friend_nickname: '',
+avatar: '',
+talk_style: '',
+roles: []
       });
 
       if (profileErr) {

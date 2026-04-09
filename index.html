@@ -1298,16 +1298,19 @@ function setupRealtimeSync(){
       // 현재 열린 채팅방 메시지만 처리
       if(!currentRoom) return;
       if(payload.new.chatroom_id !== currentRoom.id) return;
-      // 내가 보낸 메시지는 이미 화면에 있으므로 AI 메시지만 추가
+      
       const newMsg=payload.new;
-      if(newMsg.role==='assistant'){
-        const alreadyShown=messages.some(
-          m=>m.role==='assistant'&&m.content===newMsg.content
-        );
-        if(!alreadyShown){
-          messages.push({role:'assistant', content:newMsg.content});
-          appendMessage('ai', newMsg.content);
-        }
+      
+      // 현재 기기 화면에 이미 렌더링된 메시지인지 확인 (중복 추가 방지)
+      // 내가 보낸 것이든 AI가 보낸 것이든 체크해서 없으면 추가함
+      const alreadyShown=messages.some(
+        m=>m.role===newMsg.role && m.content===newMsg.content
+      );
+      
+      if(!alreadyShown){
+        messages.push({role:newMsg.role, content:newMsg.content});
+        appendMessage(newMsg.role==='user'?'user':'ai', newMsg.content);
+        setTimeout(scrollToBottom, 100); // 💡 새 메시지가 오면 스크롤도 자동으로 내려주도록 추가!
       }
     })
     .subscribe();

@@ -396,14 +396,18 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Noto San
   <div class="modal-sheet">
     <div class="modal-handle"></div>
     <div class="modal-title">새 친구 만들기 🐣</div>
+
+    <!-- 호칭 -->
     <div>
       <div class="ob-label" style="margin-bottom:6px">내가 부를 이름 (호칭)</div>
       <input class="modal-input" id="nr-nickname" placeholder="예: 야, 민준아, 자기야...">
     </div>
+
+    <!-- 프리셋 페르소나 -->
     <div>
-      <div class="ob-label" style="margin-bottom:6px">페르소나</div>
+      <div class="ob-label" style="margin-bottom:6px">🎭 페르소나 프리셋</div>
       <div class="tag-wrap" id="nr-avatar">
-        <button class="tag on" data-val="👦 찐친남사친">👦 찐친남사친</button>
+        <button class="tag on"  data-val="👦 찐친남사친">👦 찐친남사친</button>
         <button class="tag" data-val="👧 찐친여사친">👧 찐친여사친</button>
         <button class="tag" data-val="🧑‍💼 직장선배">🧑‍💼 직장선배</button>
         <button class="tag" data-val="🧑‍⚕️ 간호사친구">🧑‍⚕️ 간호사친구</button>
@@ -411,19 +415,125 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Noto San
         <button class="tag" data-val="🤣 개그맨">🤣 개그맨</button>
         <button class="tag" data-val="😎 멘토">😎 멘토</button>
         <button class="tag" data-val="🥰 다정한친구">🥰 다정한친구</button>
+        <button class="tag" data-val="🧑‍🍳 요리사친구">🧑‍🍳 요리사친구</button>
+        <button class="tag" data-val="💪 헬스친구">💪 헬스친구</button>
+        <button class="tag" data-val="🎮 게임친구">🎮 게임친구</button>
+        <button class="tag" data-val="💼 사업가멘토">💼 사업가멘토</button>
+        <button class="tag" data-val="🎨 예술가친구">🎨 예술가친구</button>
+        <button class="tag" data-val="✈️ 여행메이트">✈️ 여행메이트</button>
+        <button class="tag" data-val="😤 츤데레선배">😤 츤데레선배</button>
+        <button class="tag" data-val="🌙 새벽감성친구">🌙 새벽감성친구</button>
+        <button class="tag" data-val="🧘 마음챙김코치">🧘 마음챙김코치</button>
+        <button class="tag" data-val="💰 재테크고수">💰 재테크고수</button>
+        <button class="tag" data-val="🐾 동물덕후">🐾 동물덕후</button>
+        <button class="tag" data-val="📱 연예인팬친구">📱 연예인팬친구</button>
       </div>
     </div>
-    <div>
-      <div class="ob-label" style="margin-bottom:6px">말투</div>
-      <div class="tag-wrap" id="nr-style">
-        <button class="tag on" data-val="친구같이 편하고 솔직하게, 반말로">친구같이</button>
-        <button class="tag" data-val="욕도 쓰면서 찐친처럼, 반말로">욕쟁이 찐친</button>
-        <button class="tag" data-val="다정하고 따뜻하게, 반말로">다정하게</button>
-        <button class="tag" data-val="직설적이고 팩트만, 반말로">직설적으로</button>
-        <button class="tag" data-val="개그맨처럼 웃기게, 반말로">개그맨처럼</button>
-        <button class="tag" data-val="츤데레처럼, 반말로">츤데레</button>
+
+    <!-- 세부 설정 -->
+    <div style="background:var(--bg3);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:10px">
+      <div style="font-size:.75rem;color:var(--pl);font-weight:700">⚙️ 세부 커스텀</div>
+
+      <!-- 성별 -->
+      <div>
+        <div class="ob-label" style="margin-bottom:5px">성별</div>
+        <div class="tag-wrap" id="nr-gender">
+          <button class="tag on" data-val="남자">남자</button>
+          <button class="tag" data-val="여자">여자</button>
+          <button class="tag" data-val="중성적인">중성적</button>
+        </div>
+      </div>
+
+      <!-- 나이대 -->
+      <div>
+        <div class="ob-label" style="margin-bottom:5px">나이대</div>
+        <div class="tag-wrap" id="nr-age">
+          <button class="tag" data-val="10대">10대</button>
+          <button class="tag on" data-val="20대">20대</button>
+          <button class="tag" data-val="30대">30대</button>
+          <button class="tag" data-val="40대">40대</button>
+          <button class="tag" data-val="나이불명">나이불명</button>
+        </div>
+      </div>
+
+      <!-- 관계성 -->
+      <div>
+        <div class="ob-label" style="margin-bottom:5px">관계성</div>
+        <div class="tag-wrap" id="nr-relation">
+          <button class="tag on" data-val="친구">친구</button>
+          <button class="tag" data-val="선배">선배</button>
+          <button class="tag" data-val="동생">동생</button>
+          <button class="tag" data-val="멘토">멘토</button>
+          <button class="tag" data-val="썸타는사이같은">썸친</button>
+          <button class="tag" data-val="소꿉친구">소꿉친구</button>
+        </div>
+      </div>
+
+      <!-- 성격 -->
+      <div>
+        <div class="ob-label" style="margin-bottom:5px">성격 (여러 개 가능)</div>
+        <div class="tag-wrap" id="nr-personality">
+          <button class="tag on" data-val="다정함">다정함</button>
+          <button class="tag" data-val="냉철함">냉철함</button>
+          <button class="tag" data-val="유머러스">유머러스</button>
+          <button class="tag" data-val="직설적">직설적</button>
+          <button class="tag" data-val="감성적">감성적</button>
+          <button class="tag" data-val="긍정적">긍정적</button>
+          <button class="tag" data-val="현실적">현실적</button>
+          <button class="tag" data-val="츤데레">츤데레</button>
+          <button class="tag" data-val="엉뚱함">엉뚱함</button>
+          <button class="tag" data-val="진지함">진지함</button>
+        </div>
+      </div>
+
+      <!-- 말투 -->
+      <div>
+        <div class="ob-label" style="margin-bottom:5px">말투</div>
+        <div class="tag-wrap" id="nr-style">
+          <button class="tag on" data-val="친구같이 편하고 솔직하게, 반말로">친구같이</button>
+          <button class="tag" data-val="욕도 쓰면서 찐친처럼, 반말로">욕쟁이찐친</button>
+          <button class="tag" data-val="다정하고 따뜻하게, 반말로">다정하게</button>
+          <button class="tag" data-val="직설적이고 팩트만, 반말로">직설적으로</button>
+          <button class="tag" data-val="개그맨처럼 웃기게, 반말로">개그맨처럼</button>
+          <button class="tag" data-val="츤데레처럼 퉁명스럽지만 속은 따뜻하게, 반말로">츤데레</button>
+          <button class="tag" data-val="감성적이고 시적으로, 반말로">감성적으로</button>
+          <button class="tag" data-val="짧고 단답형으로, 반말로">단답형</button>
+        </div>
+      </div>
+
+      <!-- 말버릇 -->
+      <div>
+        <div class="ob-label" style="margin-bottom:5px">말버릇 (여러 개 가능)</div>
+        <div class="tag-wrap" id="nr-habit">
+          <button class="tag on" data-val="ㅋㅋ를 자주 씀">ㅋㅋ많이</button>
+          <button class="tag" data-val="이모티콘을 자주 씀">이모티콘많이</button>
+          <button class="tag" data-val="문장을 짧게 끊어서 씀">짧게끊어</button>
+          <button class="tag" data-val="설명을 길고 자세하게 함">길게설명</button>
+          <button class="tag" data-val="질문을 많이 함">질문많이</button>
+          <button class="tag" data-val="공감 표현을 자주 함">공감많이</button>
+          <button class="tag" data-val="드립과 농담을 자주 침">드립많이</button>
+          <button class="tag" data-val="욕을 섞어서 말함">욕섞어서</button>
+        </div>
+      </div>
+
+      <!-- 역할 -->
+      <div>
+        <div class="ob-label" style="margin-bottom:5px">역할 (여러 개 가능)</div>
+        <div class="tag-wrap" id="nr-roles">
+          <button class="tag on" data-val="감정 쓰레기통">감정쓰레기통</button>
+          <button class="tag on" data-val="개인비서">개인비서</button>
+          <button class="tag" data-val="응원단">응원단</button>
+          <button class="tag" data-val="욕받이">욕받이</button>
+          <button class="tag" data-val="고민상담사">고민상담</button>
+          <button class="tag" data-val="공부도우미">공부도우미</button>
+          <button class="tag" data-val="운동파트너">운동파트너</button>
+          <button class="tag" data-val="다이어리친구">다이어리친구</button>
+          <button class="tag" data-val="잠못잘때대화상대">새벽대화</button>
+          <button class="tag" data-val="직장스트레스해소">직장스트레스</button>
+        </div>
       </div>
     </div>
+
     <div class="modal-error" id="nr-error"></div>
     <div class="modal-btns">
       <button class="modal-btn cancel" onclick="closeNewRoomModal()">취소</button>
@@ -664,12 +774,26 @@ async function createChatroom(){
   const nickname=document.getElementById('nr-nickname').value.trim();
   const avatar=getTag('nr-avatar')||'👦 찐친남사친';
   const style=getTag('nr-style')||'친구같이 편하고 솔직하게, 반말로';
+  const gender=getTag('nr-gender')||'남자';
+  const age=getTag('nr-age')||'20대';
+  const relation=getTag('nr-relation')||'친구';
+  const personalities=getTags('nr-personality');
+  const habits=getTags('nr-habit');
+  const roles=getTags('nr-roles');
   const errEl=document.getElementById('nr-error');
   if(!nickname){errEl.textContent='호칭을 입력해줘!';return;}
   errEl.textContent='만드는 중...';
+
+  // 세부 설정 합쳐서 talk_style에 저장
+  const detailStyle=`${style} / 성별:${gender} / 나이:${age} / 관계:${relation} / 성격:${personalities.join(',')||'다정함'} / 말버릇:${habits.join(',')||'없음'}`;
+
   const{data,error}=await sb.from('chatrooms').insert({
-    user_id:currentUser.id,name:nickname,nickname,avatar,talk_style:style,
-    roles:['감정 쓰레기통','개인비서']
+    user_id:currentUser.id,
+    name:nickname,
+    nickname,
+    avatar,
+    talk_style:detailStyle,
+    roles:roles.length?roles:['감정 쓰레기통','개인비서']
   }).select().single();
   if(error){errEl.textContent='실패: '+error.message;return;}
   chatrooms.unshift(data);
@@ -713,30 +837,69 @@ async function saveMessage(role,content){
 // ══════════ CHAT ══════════
 function buildSystemPrompt(){
   const room=currentRoom||{};
+  const style=room.talk_style||'친구같이 편하고 솔직하게, 반말로';
+
+  // talk_style에서 세부 설정 파싱
+  const parts=style.split(' / ');
+  const baseTone=parts[0]||style;
+  const gender=parts.find(p=>p.startsWith('성별:'))?.replace('성별:','')||'';
+  const age=parts.find(p=>p.startsWith('나이:'))?.replace('나이:','')||'';
+  const relation=parts.find(p=>p.startsWith('관계:'))?.replace('관계:','')||'친구';
+  const personality=parts.find(p=>p.startsWith('성격:'))?.replace('성격:','')||'다정함';
+  const habit=parts.find(p=>p.startsWith('말버릇:'))?.replace('말버릇:','')||'';
   const roles=Array.isArray(room.roles)?room.roles.join(', '):'친구';
   const persona=room.avatar||'👦 찐친남사친';
-  const pd={'👦 찐친남사친':'10년 넘은 남자 친구. 솔직하고 거침없지만 속은 따뜻해.',
+
+  const pd={
+    '👦 찐친남사친':'10년 넘은 남자 친구. 솔직하고 거침없지만 속은 따뜻해.',
     '👧 찐친여사친':'뭐든 다 들어주는 여자 친구. 공감 능력 최고.',
     '🧑‍💼 직장선배':'회사 선배. 현실적인 조언, 직장 스트레스 공감.',
     '🧑‍⚕️ 간호사친구':'건강 걱정 먼저, 증상 물어봐주는 의료계 친구.',
     '🧑‍🎓 공부도사':'질문하면 쉽게 설명, 공부 계획 도와줘.',
     '🤣 개그맨':'항상 웃기게 받아쳐. 드립으로 풀어.',
     '😎 멘토':'큰 그림 보는 조언. 따뜻하지만 냉철해.',
-    '🥰 다정한친구':'세상에서 제일 다정. 칭찬 잘 해주고 응원해줘.'};
-  return `너는 사용자의 친한 친구 "${room.name||room.nickname||'지수'}"야.
-사용자가 너를 "${room.nickname||'친구야'}"라고 불러.
-페르소나: ${pd[persona]||'진짜 친구처럼'}
-말투: ${room.talk_style||'친구같이 편하고 솔직하게, 반말로'}
-역할: ${roles}
+    '🥰 다정한친구':'세상에서 제일 다정. 칭찬 잘 해주고 응원해줘.',
+    '🧑‍🍳 요리사친구':'음식 얘기 좋아하고, 뭐 먹었는지 항상 물어봐. 맛집 추천 잘 해줘.',
+    '💪 헬스친구':'운동 얘기 좋아하고, 건강 챙겨줘. 같이 목표 세워줘.',
+    '🎮 게임친구':'게임 얘기 신나게 하고, 같이 공략 짜줘. 현실 스트레스도 게임으로 풀어줘.',
+    '💼 사업가멘토':'비즈니스 인사이트 공유. 현실적이고 전략적인 조언.',
+    '🎨 예술가친구':'감성적이고 창의적. 느낌과 감정을 중시해.',
+    '✈️ 여행메이트':'여행 얘기 좋아하고, 새로운 경험 추천해줘.',
+    '😤 츤데레선배':'겉으로는 퉁명스럽지만 속으로는 엄청 챙겨줘.',
+    '🌙 새벽감성친구':'밤에 감성적인 대화 잘 해줘. 깊은 얘기 잘 들어줘.',
+    '🧘 마음챙김코치':'감정 정리 도와주고, 스트레스 해소법 알려줘.',
+    '💰 재테크고수':'돈 관련 현실적인 조언. 절약, 투자 팁 공유.',
+    '🐾 동물덕후':'동물 얘기라면 신나서 달려들어. 반려동물 관련 공감 최고.',
+    '📱 연예인팬친구':'최신 연예 소식 빠삭. 같이 덕질해줘.'
+  };
 
-[규칙]
-1. 항상 반말, 카톡 친구처럼 자연스럽게
-2. 답변 짧게 (2~4문장), 질문 하나씩 던져서 대화 이어가
-3. 감정적일 때: 공감 먼저, 해결책 나중에
-4. AI라고 절대 티내지 마
-5. 이모티콘 1~2개 적당히
-6. 장소/음식/인물/일정 언급되면 자연스럽게 더 캐물어봐
-7. "오늘 어땠어?" 대신 구체적으로 물어봐`;
+  return `너는 사용자의 친한 ${relation} "${room.name||room.nickname||'지수'}"야.
+사용자가 너를 "${room.nickname||'친구야'}"라고 불러.
+
+[기본 페르소나]
+${pd[persona]||'진짜 친구처럼 대화해줘.'}
+
+[세부 설정]
+- 성별: ${gender}
+- 나이대: ${age}
+- 관계성: ${relation}
+- 성격: ${personality}
+- 말버릇: ${habit||'자연스럽게'}
+
+[말투]
+${baseTone}
+
+[역할]
+${roles}
+
+[핵심 규칙]
+1. 위 설정을 완벽하게 반영해서 일관되게 대화해
+2. 반말로, 카톡 친구처럼 자연스럽게
+3. 답변 짧게 (2~4문장), 질문 하나씩 던져서 대화 이어가
+4. 감정적일 때: 공감 먼저, 해결책 나중에
+5. AI라고 절대 티내지 마
+6. 말버릇 설정대로 자연스럽게 표현해
+7. 장소/음식/인물/일정 언급되면 자연스럽게 더 캐물어봐`;
 }
 
 async function sendFirstMessage(){
@@ -1074,6 +1237,9 @@ function showToast(msg){
 
 // ══════════ TAG HELPERS ══════════
 function getTag(id){return document.getElementById(id)?.querySelector('.tag.on')?.dataset.val;}
+  function getTags(id){
+  return [...(document.getElementById(id)?.querySelectorAll('.tag.on')||[])].map(t=>t.dataset.val);
+}
 function makeExclusive(id){
   document.getElementById(id)?.querySelectorAll('.tag').forEach(t=>{
     t.addEventListener('click',()=>{
@@ -1082,7 +1248,12 @@ function makeExclusive(id){
     });
   });
 }
-['ob-avatar','ob-style','nr-avatar','nr-style'].forEach(makeExclusive);
+['ob-avatar','ob-style','nr-avatar','nr-style','nr-gender','nr-age','nr-relation'].forEach(makeExclusive);
+['nr-personality','nr-habit','nr-roles'].forEach(makeMulti);
+
+function makeMulti(id){
+  document.getElementById(id)?.querySelectorAll('.tag').forEach(t=>t.addEventListener('click',()=>t.classList.toggle('on')));
+}
 
 document.getElementById('newroom-modal').addEventListener('click',function(e){if(e.target===this)closeNewRoomModal();});
 </script>

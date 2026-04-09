@@ -1319,18 +1319,38 @@ function renderScheduleList(){
   }).join('');
 }
 
-async function autoExtractSchedule(userMsg,aiReply){
+async function autoExtractSchedule(userMsg, aiReply){
   const combined=(userMsg||'')+' '+(aiReply||'');
-  if(!/\d{1,2}월|\d{1,2}일|내일|모레|다음주|이번주|회의|미팅|약속|마감|제출|시험|생일|기념일/.test(combined))return;
+  if(!/\d{1,2}월|\d{1,2}일|내일|모레|다음주|이번주|오늘|회의|미팅|약속|마감|제출|시험|생일|기념일|예약/.test(combined)) return;
+
   try{
-    const resp=await fetch('/api/extract-schedule',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({text:combined,today:new Date().toISOString().slice(0,10)})});
-    if(!resp.ok)return;
+    const resp=await fetch('/api/extract-schedule',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({text:combined, today:new Date().toISOString().slice(0,10)})
+    });
+    if(!resp.ok) return;
     const result=await resp.json();
-    if(result.schedules?.length>0){
-      for(const s of result.schedules)await addScheduleItem(s.title,s.date);
-      showToast(`일정 ${result.schedules.length}개 자동 저장됐어 📅`);
+    if(!result.schedules?.length) return;
+
+    for(const s of result.schedules){
+      // 날짜가 확실한 경우 자동 추가
+      if(s.date && s.confidence === 'high'){
+        await addScheduleItem(s.title, s.date);
+        showToast(`"${s.title}" 일정 자동 저장됐어 📅`);
+      } else {
+        // 불확실한 경우 사용자에게 확인
+        const dateStr = s.date
+          ? new Date(s.date).toLocaleDateString('ko-KR',{month:'long',day:'numeric'})
+          : '날짜 미정';
+        const confirmed = confirm(`일정을 추가할까?\n\n📅 ${s.title}\n🗓 ${dateStr}\n\n추가하려면 확인을 눌러줘!`);
+        if(confirmed){
+          await addScheduleItem(s.title, s.date||null);
+          showToast(`"${s.title}" 일정 추가됐어 📅`);
+        }
+      }
     }
+    if(currentTab==='schedule'){renderCalendar();renderScheduleList();}
   }catch(e){}
 }
 

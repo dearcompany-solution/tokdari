@@ -890,7 +890,12 @@ function renderHomeList(){
       <div class="room-info" style="display:flex; align-items:center;">
         <div class="room-name" style="margin-bottom:0; font-size:1.05rem;">${room.name||room.nickname||'친구'}</div>
       </div>
-      <button class="room-delete" onclick="event.stopPropagation();deleteRoom(${room.id})">삭제</button>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+  <button class="room-delete" style="background:rgba(124,58,237,.15);border-color:rgba(124,58,237,.3);color:var(--pl)"
+    onclick="event.stopPropagation();openEditRoomModal(${room.id})">수정</button>
+  <button class="room-delete"
+    onclick="event.stopPropagation();deleteRoom(${room.id})">삭제</button>
+</div>
     </div>`).join('');
 }
 

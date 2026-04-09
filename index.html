@@ -144,7 +144,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Noto San
 @keyframes tdot{0%,80%,100%{transform:translateY(0);opacity:.4}40%{transform:translateY(-6px);opacity:1}}
 
 /* ── 입력창 ── */
-.input-bar{background:var(--header);border-top:1px solid var(--divider);padding:.5rem .75rem;display:flex;align-items:flex-end;gap:6px;padding-bottom:max(.5rem,env(safe-area-inset-bottom));flex-shrink:0}
+.input-bar{background:var(--header);border-top:1px solid var(--divider);padding:.5rem .75rem;display:flex;align-items:flex-end;gap:6px;padding-bottom:max(.5rem,env(safe-area-inset-bottom));flex-shrink:0;overflow:hidden;box-sizing:border-box;width:100%}
 .input-bar textarea{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:22px;padding:9px 14px;color:var(--text);font-size:.92rem;outline:none;resize:none;max-height:120px;min-height:40px;font-family:'Noto Sans KR',sans-serif;line-height:1.5;transition:border-color .2s}
 .input-bar textarea:focus{border-color:rgba(254,229,0,.5)}
 .send-btn{width:40px;height:40px;border-radius:50%;background:var(--kakao);border:none;color:var(--kakao-brown);font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;touch-action:manipulation;font-weight:700}
@@ -1738,26 +1738,7 @@ function _applyTheme(isDark){
   }
 }
 
-function applyDarkMode(){
-  const saved = localStorage.getItem('tokdari_darkmode');
-  const isDark = saved === null ? true : saved === '1';
-  const toggle = document.getElementById('toggle-dark');
-  const meta = document.getElementById('theme-color-meta');
-  const statusMeta = document.getElementById('status-bar-meta');
-  if(isDark){
-    document.body.classList.remove('light');
-    document.body.style.backgroundColor = '#1a1a1a';
-    if(toggle) toggle.classList.add('on');
-    if(meta) meta.setAttribute('content','#1a1a1a');
-    if(statusMeta) statusMeta.setAttribute('content','black-translucent');
-  } else {
-    document.body.classList.add('light');
-    document.body.style.backgroundColor = '#ffffff';
-    if(toggle) toggle.classList.remove('on');
-    if(meta) meta.setAttribute('content','#ffffff');
-    if(statusMeta) statusMeta.setAttribute('content','default');
-  }
-}
+
 // ══════════ SCHEDULE MANUAL ADD ══════════
 function openAddScheduleModal(){
   document.getElementById('addschedule-modal').classList.add('show');
@@ -1943,20 +1924,22 @@ function clearImgPreview(){
   // ══════════ MESSAGE FORMAT ══════════
 function formatMessageContent(text){
   if(!text||typeof text!=='string') return '';
+  // URL 먼저 추출 후 처리 (escape 전에)
   const urlPattern = /(https?:\/\/[^\s<>"]+)/g;
-  const escaped = text
-    .replace(/&/g,'&amp;')
-    .replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;');
-  return escaped.replace(urlPattern, url=>{
-    const rawUrl = url.replace(/&amp;/g,'&');
-    if(/youtube\.com|youtu\.be/i.test(rawUrl)){
-      const m=rawUrl.match(/(?:v=|youtu\.be\/)([^&?/\s]+)/);
-      const vid=m?m[1]:'';
-      return `<a href="${rawUrl}" target="_blank" style="color:var(--kakao);text-decoration:underline;word-break:break-all">🎬 ${url}</a>${vid?`<br><img src="https://img.youtube.com/vi/${vid}/mqdefault.jpg" style="max-width:200px;border-radius:8px;margin-top:4px;cursor:pointer;display:block" onclick="window.open('${rawUrl}','_blank')">` : ''}`;
+  const parts = text.split(urlPattern);
+  return parts.map(part => {
+    if(!part.match(/^https?:\/\//)) {
+      // 일반 텍스트는 escape
+      return part.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     }
-    return `<a href="${rawUrl}" target="_blank" style="color:var(--kakao);text-decoration:underline;word-break:break-all">🔗 ${url}</a>`;
-  });
+    // URL 처리
+    if(/youtube\.com|youtu\.be/i.test(part)){
+      const m=part.match(/(?:v=|youtu\.be\/)([^&?/\s]+)/);
+      const vid=m?m[1]:'';
+      return `<a href="${part}" target="_blank" style="color:var(--kakao);text-decoration:underline;word-break:break-all">🎬 ${part}</a>${vid?`<br><img src="https://img.youtube.com/vi/${vid}/mqdefault.jpg" style="max-width:200px;border-radius:8px;margin-top:4px;cursor:pointer;display:block" onclick="window.open('${part}','_blank')">` : ''}`;
+    }
+    return `<a href="${part}" target="_blank" style="color:var(--kakao);text-decoration:underline;word-break:break-all">🔗 ${part}</a>`;
+  }).join('');
 }
 
 function escapeHtml(text){

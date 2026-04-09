@@ -352,9 +352,18 @@ body.light .app-header{box-shadow:0 1px 3px rgba(0,0,0,.08)}
     </div>
     <div id="chat-messages"></div>
     <div class="input-bar">
-      <textarea id="msg-input" placeholder="메시지 입력..." rows="1" oninput="autoResize(this)"></textarea>
-      <button class="send-btn" onclick="sendMessage()">↑</button>
+  <button class="attach-btn" onclick="document.getElementById('photo-input').click()">📷</button>
+  <input type="file" id="photo-input" accept="image/*" style="display:none" onchange="handlePhoto(event)">
+  <div class="input-wrap">
+    <div class="emoji-panel" id="emoji-panel">
+      <div class="emoji-grid" id="emoji-grid"></div>
     </div>
+    <div id="img-preview-wrap"></div>
+    <textarea id="msg-input" placeholder="메시지 입력..." rows="1" oninput="autoResize(this)"></textarea>
+  </div>
+  <button class="attach-btn" onclick="toggleEmojiPanel()">😊</button>
+  <button class="send-btn" onclick="sendMessage()">↑</button>
+</div>
   </div>
 
   <!-- 탭 콘텐츠 -->
@@ -1215,11 +1224,32 @@ async function sendFirstMessage(){
 async function sendMessage(){
   const ta=document.getElementById('msg-input');
   const text=ta.value.trim();
-  if(!text||isLoading) return;
-  ta.value='';ta.style.height='auto';
-  appendMessage('user',text);
-  messages.push({role:'user',content:text});
-  await saveMessage('user',text);
+  if(!text&&!pendingImage) return;
+  if(isLoading) return;
+
+  document.getElementById('emoji-panel')?.classList.remove('show');
+
+  if(pendingImage){
+    appendMessage('user','',pendingImage);
+    messages.push({role:'user',content:[
+      {type:'image_url',image_url:{url:pendingImage}},
+      {type:'text',text:text||'이 사진 봐봐'}
+    ]});
+    await saveMessage('user', text||'이 사진 봐봐');
+    clearImgPreview();
+  }
+
+  if(text){
+    ta.value='';ta.style.height='auto';
+    if(!pendingImage){
+      appendMessage('user',text);
+      messages.push({role:'user',content:text});
+      await saveMessage('user',text);
+    }
+  } else {
+    ta.value='';ta.style.height='auto';
+  }
+
   await callGPT();
 }
 
@@ -1263,7 +1293,7 @@ async function callGPT(){
   document.getElementById('chat-status').textContent='온라인';
 }
 
-function appendMessage(role,content,imgSrc){
+function appendMessage(role, content, imgSrc){
   const wrap=document.getElementById('chat-messages');
   const row=document.createElement('div');
   row.className='msg-row'+(role==='user'?' user':'');
@@ -1276,8 +1306,23 @@ function appendMessage(role,content,imgSrc){
   }
   const col=document.createElement('div');col.className='msg-col';
   const bubble=document.createElement('div');bubble.className='bubble '+(role==='user'?'user':'ai');
-  if(imgSrc){const img=document.createElement('img');img.src=imgSrc;bubble.appendChild(img);}
-  else bubble.textContent=content;
+
+  if(imgSrc){
+    const img=document.createElement('img');img.src=imgSrc;img.style.maxWidth='100%';img.style.borderRadius='10px';
+    bubble.appendChild(img);
+  } else if(typeof content==='string' && isYoutubeUrl(content)){
+    const videoId=getYoutubeId(content);
+    bubble.innerHTML=`
+      <a href="${content}" target="_blank" style="color:inherit;text-decoration:underline;font-size:.85rem;word-break:break-all">🎬 ${content}</a>
+      <div style="margin-top:6px;border-radius:10px;overflow:hidden;cursor:pointer" onclick="window.open('${content}','_blank')">
+        <img src="https://img.youtube.com/vi/${videoId}/mqdefault.jpg" style="width:100%;border-radius:8px;display:block">
+      </div>`;
+  } else if(typeof content==='string' && isUrl(content)){
+    bubble.innerHTML=`<a href="${content}" target="_blank" style="color:inherit;text-decoration:underline;word-break:break-all">🔗 ${content}</a>`;
+  } else {
+    bubble.textContent = typeof content==='string' ? content : '';
+  }
+
   const timeEl=document.createElement('div');timeEl.className='msg-time';timeEl.textContent=time;
   col.appendChild(bubble);col.appendChild(timeEl);
   row.appendChild(col);
@@ -1754,6 +1799,85 @@ async function saveManualSchedule(){
   await addScheduleItem(title, date||null);
   closeAddScheduleModal();
   showToast('일정 추가됐어 📅');
+}
+  // ══════════ EMOJI ══════════
+const EMOJIS = [
+  '😊','😂','🤣','😍','🥰','😘','😎','🤩','😜','😏',
+  '😢','😭','😤','😡','🤬','😱','😰','😓','🥺','😩',
+  '👍','👎','👏','🙏','🤝','💪','✌️','🫶','❤️','💔',
+  '🔥','✨','💯','🎉','🎊','💀','👀','🤔','😴','🤤',
+  'ㅋㅋ','ㅎㅎ','ㅠㅠ','ㅜㅜ','^^','^^;','~','!','?','...',
+  '🍕','🍔','🍣','🍜','🍺','☕','🎮','⚽','🎵','🎬'
+];
+
+function initEmojiPanel(){
+  const grid=document.getElementById('emoji-grid');
+  if(!grid) return;
+  grid.innerHTML=EMOJIS.map(e=>`<button class="emoji-btn" onclick="insertEmoji('${e}')">${e}</button>`).join('');
+}
+
+function toggleEmojiPanel(){
+  const panel=document.getElementById('emoji-panel');
+  if(!panel) return;
+  panel.classList.toggle('show');
+  if(panel.classList.contains('show')) initEmojiPanel();
+}
+
+function insertEmoji(emoji){
+  const ta=document.getElementById('msg-input');
+  if(!ta) return;
+  const start=ta.selectionStart, end=ta.selectionEnd;
+  ta.value=ta.value.slice(0,start)+emoji+ta.value.slice(end);
+  ta.selectionStart=ta.selectionEnd=start+emoji.length;
+  ta.focus();
+  autoResize(ta);
+}
+
+document.addEventListener('click',e=>{
+  const panel=document.getElementById('emoji-panel');
+  if(!panel) return;
+  if(!panel.contains(e.target)&&!e.target.closest('.attach-btn')){
+    panel.classList.remove('show');
+  }
+});
+
+// ══════════ PHOTO ══════════
+let pendingImage=null;
+
+function handlePhoto(e){
+  const file=e.target.files[0];if(!file) return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    pendingImage=ev.target.result;
+    showImgPreview(pendingImage);
+  };
+  reader.readAsDataURL(file);
+  e.target.value='';
+}
+
+function showImgPreview(src){
+  const wrap=document.getElementById('img-preview-wrap');
+  if(!wrap) return;
+  wrap.innerHTML=`<div class="img-preview"><img src="${src}"><button class="img-preview-del" onclick="clearImgPreview()">✕</button></div>`;
+}
+
+function clearImgPreview(){
+  pendingImage=null;
+  const wrap=document.getElementById('img-preview-wrap');
+  if(wrap) wrap.innerHTML='';
+}
+  // ══════════ URL HELPERS ══════════
+function isUrl(text){
+  if(!text || typeof text !== 'string') return false;
+  return /^https?:\/\//i.test(text.trim());
+}
+function isYoutubeUrl(text){
+  if(!text || typeof text !== 'string') return false;
+  return /youtube\.com|youtu\.be/i.test(text);
+}
+function getYoutubeId(url){
+  const m=url.match(/(?:v=|youtu\.be\/)([^&?/\s]+)/);
+  return m ? m[1] : '';
 }
   // ══════════ TOAST ══════════
 function showToast(msg){

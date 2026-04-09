@@ -152,11 +152,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Noto San
 .de-mood{font-size:1.3rem}
 .de-date{font-size:.7rem;color:var(--text3)}
 .de-text{font-size:.82rem;color:var(--text2);line-height:1.5}
-.diary-fab{position:fixed;bottom:80px;right:16px;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,var(--purple),var(--pink));border:none;color:#fff;font-size:1.5rem;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(124,58,237,.4)}
 #new-room-fab{display:none}
-#home-screen.active #new-room-fab{display:flex}
-#diary-add-fab{display:none}
-#diary-screen.active #diary-add-fab{display:flex}
 
 /* SETTINGS */
 #settings-screen{background:var(--bg);display:none;flex-direction:column;flex:1;overflow-y:auto}
@@ -1343,8 +1339,10 @@ function selectMood(btn) {
 }
 
 function updateStats() {
-  document.getElementById('stat-msgs').textContent = messages.length;
-  document.getElementById('stat-diary').textContent = diaryEntries.length;
+  const m = document.getElementById('stat-msgs');
+  const d = document.getElementById('stat-diary');
+  if(m) m.textContent = messages.length;
+  if(d) d.textContent = diaryEntries.length;
 }
 
 function askSchedule() {
@@ -1354,7 +1352,6 @@ function askSchedule() {
 }
 
 // ══════════ TAB ══════════
-// 기존 전체 교체
 let currentTab = 'home';
 function switchTab(tab) {
   currentTab = tab;
@@ -1371,7 +1368,6 @@ function switchTab(tab) {
   document.getElementById('home-screen').classList.remove('active');
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
 
-  // FAB 제어
   const fab = document.getElementById('new-room-fab');
   if(fab) fab.style.display = 'none';
 
@@ -1395,11 +1391,6 @@ function restoreTab() {
   else if(saved === 'diary') switchTab('home');
   else switchTab(saved);
 }
-function restoreTab() {
-  const saved = sessionStorage.getItem('currentTab') || 'home';
-  if(saved === 'chat' && !currentRoom) switchTab('home');
-  else switchTab(saved);
-}
 
 // ══════════ TAG HELPERS ══════════
 function getTag(id) { const el = document.getElementById(id)?.querySelector('.tag.on'); return el?.dataset.val; }
@@ -1412,7 +1403,8 @@ function makeExclusive(id) {
 }
 function makeMulti(id) { document.getElementById(id)?.querySelectorAll('.tag').forEach(t=>t.addEventListener('click',()=>t.classList.toggle('on'))); }
 
-['ob-avatar','ob-style','s-avatar','s-style','nr-avatar','nr-style'].forEach(makeExclusive);
+['ob-avatar','ob-style','nr-avatar','nr-style'].forEach(makeExclusive);
+
 ['ob-roles','nr-roles'].forEach(makeMulti);
 
 // ══════════ NOTIFICATIONS ══════════

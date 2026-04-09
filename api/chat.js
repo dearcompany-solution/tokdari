@@ -15,7 +15,14 @@ module.exports = async function handler(req, res) {
   try {
     // 마지막 유저 메시지에서 검색 필요 여부 판단
     const lastUserMsg = [...messages].reverse().find(m => m.role === 'user')?.content || '';
-    const needsSearch = /뉴스|최신|요즘|트렌드|요새|지금|현재|오늘|어제|이번주|연예|스포츠|주가|날씨|새로나온|신작|개봉|출시/.test(lastUserMsg);
+    // 검색 불필요한 것 (감정/일상 대화)
+const noSearchNeeded = /힘들어|피곤|슬퍼|기뻐|화나|보고싶|사랑|ㅋㅋ|ㅠㅠ|밥|잠|자야|놀자|심심/.test(lastUserMsg);
+
+// 사실/정보 관련이면 검색
+const needsSearch = !noSearchNeeded && (
+  lastUserMsg.length > 10 && // 너무 짧은 건 검색 안 함
+  /뭐야|뭔데|어때|알아|맞아|언제|어디|누구|얼마|몇|어떻게|왜|뉴스|최신|요즘|트렌드|요새|지금|현재|오늘|어제|이번주|연예|스포츠|주가|날씨|새로나온|신작|개봉|출시|정보|알려줘|찾아봐|검색/.test(lastUserMsg)
+);
 
     let searchContext = '';
     if (needsSearch && process.env.BRAVE_API_KEY) {

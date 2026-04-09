@@ -455,7 +455,27 @@ body.light .app-header{box-shadow:0 1px 3px rgba(0,0,0,.08)}
   </div>
 </div>
 
-<!-- 새 채팅방 모달 -->
+<!-- 일정 수동 추가 모달 -->
+<div class="modal-overlay" id="addschedule-modal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">일정 추가 📅</div>
+    <div>
+      <div class="ob-label" style="margin-bottom:6px">일정 내용</div>
+      <input class="modal-input" id="as-title" placeholder="예: 병원 예약, 팀 미팅...">
+    </div>
+    <div>
+      <div class="ob-label" style="margin-bottom:6px">날짜 (선택)</div>
+      <input class="modal-input" id="as-date" type="date">
+    </div>
+    <div class="modal-error" id="as-error"></div>
+    <div class="modal-btns">
+      <button class="modal-btn cancel" onclick="closeAddScheduleModal()">취소</button>
+      <button class="modal-btn primary" onclick="saveManualSchedule()">추가 ✓</button>
+    </div>
+  </div>
+</div>
+  <!-- 새 채팅방 모달 -->
 <div class="modal-overlay" id="newroom-modal">
   <div class="modal-sheet">
     <div class="modal-handle"></div>
@@ -941,13 +961,13 @@ async function createChatroom(){
 
 async function deleteRoom(roomId){
   const room=chatrooms.find(r=>r.id===roomId);
-  if(!confirm(`"${room?.name}" 채팅방을 삭제할까?\n대화 내용도 전부 사라져!`)) return;
+  if(!confirm(`"${room?.name}" 채팅방을 삭제할까?\n대화 내용은 사라지지만 일정은 유지돼!`)) return;
   await sb.from('messages').delete().eq('chatroom_id',roomId);
   await sb.from('chatrooms').delete().eq('id',roomId);
   chatrooms=chatrooms.filter(r=>r.id!==roomId);
   if(currentRoom?.id===roomId){currentRoom=null;messages=[];}
   renderChatrooms();renderHomeList();
-  showToast('채팅방 삭제됐어');
+  showToast('채팅방 삭제됐어 (일정은 유지됨)');
 }
 
 // ══════════ MESSAGES ══════════
@@ -1273,16 +1293,28 @@ function renderScheduleList(){
     if(calSelectedDate)return s.due_date.slice(0,10)===calSelectedDate;
     return d.getFullYear()===year&&d.getMonth()===month;
   });
+
+  // 수동 추가 버튼
+  const addBtn=`
+    <div style="padding:8px 0">
+      <button onclick="openAddScheduleModal()" style="width:100%;padding:.75rem;background:var(--kakao);color:var(--kakao-brown);border:none;border-radius:12px;font-size:.88rem;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif">
+        + 일정 직접 추가
+      </button>
+    </div>`;
+
   if(!filtered.length){
-    el.innerHTML=`<div class="empty-schedule">${calSelectedDate?'이날 일정이 없어 😊':'이번달 일정이 없어!<br>대화하다가 일정 얘기하면<br>자동으로 저장돼 ✨'}</div>`;
+    el.innerHTML=addBtn+`<div class="empty-schedule">${calSelectedDate?'이날 일정이 없어 😊':'이번달 일정이 없어!<br>대화하다가 일정 얘기하면<br>자동으로 저장돼 ✨'}</div>`;
     return;
   }
-  el.innerHTML=filtered.map(s=>{
+  el.innerHTML=addBtn+filtered.map(s=>{
     const dl=s.due_date?new Date(s.due_date).toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'short'}):'날짜 미정';
     return `<div class="schedule-item${s.done?' done':''}">
       <div class="si-check${s.done?' checked':''}" onclick="toggleScheduleDone(${s.id})">${s.done?'✓':''}</div>
-      <div class="si-body"><div class="si-title">${s.title}</div><div class="si-date">📅 ${dl}</div></div>
-      <button class="si-del" onclick="deleteScheduleItem(${s.id})">✕</button>
+      <div class="si-body">
+        <div class="si-title">${s.title}</div>
+        <div class="si-date">📅 ${dl}</div>
+      </div>
+      <button class="si-del" onclick="deleteScheduleItem(${s.id})" title="삭제">🗑</button>
     </div>`;
   }).join('');
 }
@@ -1456,6 +1488,26 @@ function applyDarkMode(){
     document.body.classList.add('light');
     if(toggle) toggle.classList.remove('on');
   }
+}
+// ══════════ SCHEDULE MANUAL ADD ══════════
+function openAddScheduleModal(){
+  document.getElementById('addschedule-modal').classList.add('show');
+  document.getElementById('as-title').value='';
+  document.getElementById('as-date').value=calSelectedDate||new Date().toISOString().slice(0,10);
+  document.getElementById('as-error').textContent='';
+}
+function closeAddScheduleModal(){
+  document.getElementById('addschedule-modal').classList.remove('show');
+}
+async function saveManualSchedule(){
+  const title=document.getElementById('as-title').value.trim();
+  const date=document.getElementById('as-date').value;
+  const errEl=document.getElementById('as-error');
+  if(!title){errEl.textContent='일정 내용을 입력해줘!';return;}
+  errEl.textContent='저장 중...';
+  await addScheduleItem(title, date||null);
+  closeAddScheduleModal();
+  showToast('일정 추가됐어 📅');
 }
   // ══════════ TOAST ══════════
 function showToast(msg){

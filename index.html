@@ -663,6 +663,8 @@ async function startApp(){
   applyProfile();
   await Promise.all([loadChatrooms(),loadSchedule()]);
   switchTab('home');
+  // 실시간 동기화 구독
+setupRealtimeSync();
   requestNotifPermission();
   scheduleRandomPing();
 }
@@ -699,7 +701,9 @@ function openChat(roomId){
   document.getElementById('chat-name').textContent=room.name||room.nickname||'친구';
   document.getElementById('chat-status').textContent='온라인';
   document.getElementById('chat-screen').classList.add('active');
+
   loadRoomMessages(room.id).then(()=>{
+    // DB에 메시지가 없을 때만 첫 인사
     if(messages.length===0) sendFirstMessage();
   });
 }
@@ -815,21 +819,34 @@ async function deleteRoom(roomId){
 
 // ══════════ MESSAGES ══════════
 async function loadRoomMessages(roomId){
-  const{data}=await sb.from('messages').select('*')
-    .eq('user_id',currentUser.id).eq('chatroom_id',roomId)
-    .order('created_at',{ascending:true}).limit(100);
-  if(data){
-    messages=data.map(m=>({role:m.role,content:m.content}));
+  const{data}=await sb.from('messages')
+    .select('*')
+    .eq('chatroom_id', roomId)
+    .order('created_at',{ascending:true})
+    .limit(100);
+  if(data && data.length > 0){
+    messages=data.map(m=>({role:m.role, content:m.content}));
     renderAllMessages();
-    setTimeout(scrollToBottom,100);
+    setTimeout(scrollToBottom, 100);
   }
 }
 
-async function saveMessage(role,content){
-  if(!currentRoom) return;
-  await sb.from('messages').insert({user_id:currentUser.id,chatroom_id:currentRoom.id,role,content});
+async function saveMessage(role, content){
+  if(!currentRoom||!currentUser) return;
+  const{error}=await sb.from('messages').insert({
+    user_id: currentUser.id,
+    chatroom_id: currentRoom.id,
+    role,
+    content: typeof content==='string'?content:JSON.stringify(content)
+  });
+  if(error) console.error('메시지 저장 실패:', error);
+
+  // 채팅방 마지막 메시지 업데이트
   const preview=typeof content==='string'?content.slice(0,50):'사진';
-  await sb.from('chatrooms').update({last_msg:preview,updated_at:new Date().toISOString()}).eq('id',currentRoom.id);
+  await sb.from('chatrooms')
+    .update({last_msg:preview, updated_at:new Date().toISOString()})
+    .eq('id', currentRoom.id);
+
   const room=chatrooms.find(r=>r.id===currentRoom.id);
   if(room){room.last_msg=preview;room.updated_at=new Date().toISOString();}
 }
@@ -1228,7 +1245,46 @@ function scheduleRandomPing(){
     scheduleRandomPing();
   },delay);
 }
+// ══════════ REALTIME SYNC ══════════
+function setupRealtimeSync(){
+  // 채팅방 목록 실시간 동기화
+  sb.channel('chatrooms-sync')
+    .on('postgres_changes',{
+      event:'*',
+      schema:'public',
+      table:'chatrooms',
+      filter:`user_id=eq.${currentUser.id}`
+    }, async()=>{
+      await loadChatrooms();
+      renderHomeList();
+      renderChatrooms();
+    })
+    .subscribe();
 
+  // 현재 열린 채팅방 메시지 실시간 동기화
+  sb.channel('messages-sync')
+    .on('postgres_changes',{
+      event:'INSERT',
+      schema:'public',
+      table:'messages'
+    }, payload=>{
+      // 현재 열린 채팅방 메시지만 처리
+      if(!currentRoom) return;
+      if(payload.new.chatroom_id !== currentRoom.id) return;
+      // 내가 보낸 메시지는 이미 화면에 있으므로 AI 메시지만 추가
+      const newMsg=payload.new;
+      if(newMsg.role==='assistant'){
+        const alreadyShown=messages.some(
+          m=>m.role==='assistant'&&m.content===newMsg.content
+        );
+        if(!alreadyShown){
+          messages.push({role:'assistant', content:newMsg.content});
+          appendMessage('ai', newMsg.content);
+        }
+      }
+    })
+    .subscribe();
+}
 // ══════════ TOAST ══════════
 function showToast(msg){
   const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');

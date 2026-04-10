@@ -6,20 +6,6 @@ const sb = createClient(
   process.env.SUPABASE_SERVICE_KEY
 );
 
-// VAPID 서명 생성 (web-push 없이 직접 구현)
-async function sendPushNotification(subscription, payload) {
-  const webpush = await import('web-push').catch(() => null);
-  if (!webpush) throw new Error('web-push 없음');
-
-  webpush.default.setVapidDetails(
-    process.env.VAPID_EMAIL,
-    process.env.VAPID_PUBLIC_KEY,
-    process.env.VAPID_PRIVATE_KEY
-  );
-
-  await webpush.default.sendNotification(subscription, JSON.stringify(payload));
-}
-
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -37,15 +23,28 @@ module.exports = async function handler(req, res) {
 
     if (!subs?.length) return res.status(200).json({ ok: true, sent: 0 });
 
+    // web-push를 dynamic import로 로드
+    const webpushModule = await import('web-push');
+    const webpush = webpushModule.default || webpushModule;
+
+    webpush.setVapidDetails(
+      process.env.VAPID_EMAIL,
+      process.env.VAPID_PUBLIC_KEY,
+      process.env.VAPID_PRIVATE_KEY
+    );
+
     let sent = 0;
     for (const row of subs) {
       try {
-        await sendPushNotification(row.subscription, {
-          title: title || '톡다리',
-          body: body || '야 어디있어?',
-          icon: '/icon.png',
-          badge: '/icon.png'
-        });
+        await webpush.sendNotification(
+          row.subscription,
+          JSON.stringify({
+            title: title || '톡다리',
+            body: body || '야 어디있어?',
+            icon: '/icon.png',
+            badge: '/icon.png'
+          })
+        );
         sent++;
       } catch(e) {
         if (e.statusCode === 410) {
@@ -53,6 +52,7 @@ module.exports = async function handler(req, res) {
         }
       }
     }
+
     return res.status(200).json({ ok: true, sent });
   } catch(e) {
     return res.status(500).json({ error: e.message });

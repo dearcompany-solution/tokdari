@@ -274,6 +274,18 @@ body.light .room-name{color:#191919}
 body.light .cal-wrap{background:#ffffff}
 body.light .cal-day{color:#555}
 body.light .schedule-item{background:#ffffff;border-color:rgba(0,0,0,.08)}
+/* 단계별 점 */
+.step-dot{width:8px;height:8px;border-radius:50%;background:var(--border);transition:background .2s}
+.step-dot.active{background:var(--kakao)}
+
+/* 질문 선택 버튼 */
+.nr-choice{width:100%;padding:.85rem 1rem;background:var(--bg3);border:1.5px solid var(--border);border-radius:14px;color:var(--text);font-size:.9rem;cursor:pointer;text-align:left;font-family:'Noto Sans KR',sans-serif;transition:all .15s;display:flex;align-items:center;gap:10px}
+.nr-choice:active{background:var(--bg2)}
+.nr-choice.selected{border-color:var(--kakao);background:rgba(254,229,0,.1);color:var(--text)}
+.nr-choice .choice-icon{font-size:1.4rem;flex-shrink:0}
+.nr-choice .choice-text{display:flex;flex-direction:column;gap:2px}
+.nr-choice .choice-title{font-weight:700;font-size:.9rem}
+.nr-choice .choice-desc{font-size:.75rem;color:var(--text3)}
 </style>
 </head>
 <body>
@@ -501,11 +513,41 @@ body.light .schedule-item{background:#ffffff;border-color:rgba(0,0,0,.08)}
     </div>
   </div>
 </div>
-  <!-- 새 채팅방 모달 -->
+  <!-- 새 채팅방 모달 - 단계별 질문 방식 -->
 <div class="modal-overlay" id="newroom-modal">
   <div class="modal-sheet">
     <div class="modal-handle"></div>
-    <div class="modal-title">새 친구 만들기 🐣</div>
+
+    <!-- 단계 표시 -->
+    <div style="display:flex;gap:6px;justify-content:center;margin-bottom:4px">
+      <div class="step-dot active" id="dot-1"></div>
+      <div class="step-dot" id="dot-2"></div>
+      <div class="step-dot" id="dot-3"></div>
+      <div class="step-dot" id="dot-4"></div>
+      <div class="step-dot" id="dot-5"></div>
+    </div>
+
+    <div class="modal-title" id="nr-step-title">어떤 친구가 필요해? 🤔</div>
+    <div style="font-size:.78rem;color:var(--text3);text-align:center" id="nr-step-sub">딱 하나만 골라줘!</div>
+
+    <!-- 단계별 내용 -->
+    <div id="nr-step-content" style="display:flex;flex-direction:column;gap:10px"></div>
+
+    <!-- 이름 입력 (마지막 단계) -->
+    <div id="nr-name-wrap" style="display:none">
+      <div class="ob-label" style="margin-bottom:6px">친구 이름 (호칭)</div>
+      <input class="modal-input" id="nr-nickname" placeholder="예: 야, 민준아, 자기야...">
+    </div>
+
+    <div class="modal-error" id="nr-error"></div>
+
+    <div class="modal-btns">
+      <button class="modal-btn cancel" id="nr-back-btn" onclick="nrPrevStep()" style="display:none">← 이전</button>
+      <button class="modal-btn cancel" id="nr-cancel-btn" onclick="closeNewRoomModal()">취소</button>
+      <button class="modal-btn primary" id="nr-next-btn" onclick="nrNextStep()">다음 →</button>
+    </div>
+  </div>
+</div>
 
     <!-- 호칭 -->
     <div>
@@ -917,32 +959,25 @@ async function loadChatrooms(){
 function renderHomeList(){
   const list=document.getElementById('home-room-list');
   if(!list) return;
-  
   if(!chatrooms.length){
     list.innerHTML='<div class="empty-rooms">🐣<br>아직 친구가 없어!<br>채팅방 탭에서 + 버튼 눌러봐</div>';
     return;
   }
-  
-  // 최신순 정렬 유지
   const sorted=[...chatrooms].sort((a,b)=>{
     const da=new Date(a.updated_at||a.created_at||0);
     const db=new Date(b.updated_at||b.created_at||0);
     return db-da;
   });
-  
-  // 마지막 메시지와 시간을 빼고, 이름과 삭제 버튼만 나오도록 수정
   list.innerHTML=sorted.map(room=>`
     <div class="room-card" onclick="openChat(${room.id})">
       <div class="room-avatar">${(room.avatar||'👦').split(' ')[0]}</div>
-      <div class="room-info" style="display:flex; align-items:center;">
-        <div class="room-name" style="margin-bottom:0; font-size:1.05rem;">${room.name||room.nickname||'친구'}</div>
+      <div class="room-info">
+        <div class="room-name">${room.name||room.nickname||'친구'}</div>
+        <div class="room-last">${room.last_msg||'대화를 시작해봐 👋'}</div>
       </div>
-      <div style="display:flex;gap:6px;flex-shrink:0">
-  <button class="room-delete" style="background:rgba(124,58,237,.15);border-color:rgba(124,58,237,.3);color:var(--pl)"
-    onclick="event.stopPropagation();openEditRoomModal(${room.id})">수정</button>
-  <button class="room-delete"
-    onclick="event.stopPropagation();deleteRoom(${room.id})">삭제</button>
-</div>
+      <div class="room-meta">
+        <div class="room-time">${room.updated_at?formatTime(room.updated_at):''}</div>
+      </div>
     </div>`).join('');
 }
 
@@ -1966,6 +2001,210 @@ function getYoutubeId(url){
   const m=url.match(/(?:v=|youtu\.be\/)([^&?/\s]+)/);
   return m ? m[1] : '';
 }
+  // ══════════ 새 친구 만들기 - 단계별 질문 ══════════
+const NR_STEPS = [
+  {
+    title: '어떤 친구가 필요해? 🤔',
+    sub: '딱 하나만 골라줘!',
+    key: 'need',
+    choices: [
+      { icon:'💬', title:'감정 털어놓을 친구', desc:'힘들 때 들어주고 공감해줘', val:'emotional' },
+      { icon:'🧠', title:'정보 얻을 친구', desc:'궁금한 거 물어보면 척척 답해줘', val:'info' },
+      { icon:'😂', title:'그냥 수다 친구', desc:'일상 얘기, 웃긴 얘기 같이 해', val:'chat' },
+      { icon:'💪', title:'동기부여 친구', desc:'목표 세우고 응원해줘', val:'motivation' }
+    ]
+  },
+  {
+    title: '어떤 스타일이 편해? 😊',
+    sub: '대화 방식 골라줘!',
+    key: 'style',
+    choices: [
+      { icon:'🤗', title:'내 편만 들어줘', desc:'무조건 공감, 위로 먼저', val:'support' },
+      { icon:'💡', title:'팩트로 말해줘', desc:'솔직하고 직설적으로', val:'fact' },
+      { icon:'😄', title:'웃기게 해줘', desc:'드립치고 분위기 띄워줘', val:'fun' },
+      { icon:'🥰', title:'다정하게 해줘', desc:'따뜻하고 포근하게', val:'warm' }
+    ]
+  },
+  {
+    title: '성별은 어떤 게 편해? 👤',
+    sub: '친구 성별 골라줘!',
+    key: 'gender',
+    choices: [
+      { icon:'👦', title:'남자 친구', desc:'남자 느낌으로 대화해줘', val:'남자' },
+      { icon:'👧', title:'여자 친구', desc:'여자 느낌으로 대화해줘', val:'여자' },
+      { icon:'🧑', title:'상관없어', desc:'성별 구분 없이 편하게', val:'중성적인' }
+    ]
+  },
+  {
+    title: '나이대는? 🎂',
+    sub: '어떤 느낌의 친구가 좋아?',
+    key: 'age',
+    choices: [
+      { icon:'🧑', title:'동갑내기', desc:'완전 친구처럼 편하게', val:'20대' },
+      { icon:'😎', title:'선배/언니/오빠', desc:'경험 많고 든든한 느낌', val:'30대' },
+      { icon:'🐣', title:'동생', desc:'귀엽고 애교 있게', val:'10대' },
+      { icon:'🤷', title:'상관없어', desc:'나이 상관없이', val:'나이불명' }
+    ]
+  },
+  {
+    title: '마지막! MBTI 스타일은? ✨',
+    sub: '대화 에너지 골라줘!',
+    key: 'mbti',
+    choices: [
+      { icon:'⚡', title:'E형 친구', desc:'활발하고 먼저 말 걸어줘', val:'E' },
+      { icon:'🌙', title:'I형 친구', desc:'조용하고 깊이 있게', val:'I' },
+      { icon:'🤷', title:'잘 모르겠어', desc:'상황에 맞게', val:'any' }
+    ]
+  }
+];
+
+let nrCurrentStep = 0;
+let nrAnswers = {};
+
+function openNewRoomModal(){
+  nrCurrentStep = 0;
+  nrAnswers = {};
+  document.getElementById('nr-error').textContent = '';
+  document.getElementById('nr-nickname').value = '';
+  document.getElementById('nr-name-wrap').style.display = 'none';
+  document.getElementById('nr-next-btn').textContent = '다음 →';
+  document.getElementById('nr-back-btn').style.display = 'none';
+  document.getElementById('nr-cancel-btn').style.display = '';
+  renderNrStep();
+  document.getElementById('newroom-modal').classList.add('show');
+}
+
+function closeNewRoomModal(){
+  nrCurrentStep = 0;
+  nrAnswers = {};
+  document.getElementById('newroom-modal').classList.remove('show');
+}
+
+function renderNrStep(){
+  const step = NR_STEPS[nrCurrentStep];
+
+  // 점 업데이트
+  document.querySelectorAll('.step-dot').forEach((d,i)=>{
+    d.classList.toggle('active', i === nrCurrentStep);
+  });
+
+  document.getElementById('nr-step-title').textContent = step.title;
+  document.getElementById('nr-step-sub').textContent = step.sub;
+
+  // 이름 입력창 숨기기
+  document.getElementById('nr-name-wrap').style.display = 'none';
+
+  // 선택지 렌더링
+  const content = document.getElementById('nr-step-content');
+  content.innerHTML = step.choices.map(c => `
+    <button class="nr-choice${nrAnswers[step.key]===c.val?' selected':''}"
+      onclick="nrSelectChoice('${step.key}','${c.val}',this)">
+      <span class="choice-icon">${c.icon}</span>
+      <span class="choice-text">
+        <span class="choice-title">${c.title}</span>
+        <span class="choice-desc">${c.desc}</span>
+      </span>
+    </button>`).join('');
+
+  // 버튼 상태
+  document.getElementById('nr-back-btn').style.display = nrCurrentStep > 0 ? '' : 'none';
+  document.getElementById('nr-next-btn').textContent =
+    nrCurrentStep === NR_STEPS.length - 1 ? '다음 →' : '다음 →';
+}
+
+function nrSelectChoice(key, val, el){
+  nrAnswers[key] = val;
+  document.querySelectorAll('.nr-choice').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function nrNextStep(){
+  const step = NR_STEPS[nrCurrentStep];
+  if(!nrAnswers[step.key]){
+    document.getElementById('nr-error').textContent = '하나 골라줘!';
+    return;
+  }
+  document.getElementById('nr-error').textContent = '';
+
+  if(nrCurrentStep < NR_STEPS.length - 1){
+    nrCurrentStep++;
+    renderNrStep();
+  } else {
+    // 마지막 단계 → 이름 입력으로
+    document.getElementById('nr-step-content').innerHTML = '';
+    document.getElementById('nr-step-title').textContent = '친구 이름 정해줘! 🎉';
+    document.getElementById('nr-step-sub').textContent = '내가 부를 호칭이야';
+    document.getElementById('nr-name-wrap').style.display = 'block';
+    document.getElementById('nr-next-btn').textContent = '만들기 🚀';
+    document.getElementById('nr-next-btn').onclick = createChatroomFromWizard;
+    // 점 다 채우기
+    document.querySelectorAll('.step-dot').forEach(d => d.classList.add('active'));
+  }
+}
+
+function nrPrevStep(){
+  if(nrCurrentStep > 0){
+    nrCurrentStep--;
+    document.getElementById('nr-next-btn').textContent = '다음 →';
+    document.getElementById('nr-next-btn').onclick = nrNextStep;
+    renderNrStep();
+  }
+}
+
+async function createChatroomFromWizard(){
+  const nickname = document.getElementById('nr-nickname').value.trim();
+  const errEl = document.getElementById('nr-error');
+  if(!nickname){ errEl.textContent = '호칭을 입력해줘!'; return; }
+  errEl.textContent = '만드는 중...';
+
+  // 답변 기반으로 페르소나 자동 결정
+  const { need, style, gender, age, mbti } = nrAnswers;
+
+  // 페르소나 결정
+  let avatar = '👦 찐친남사친';
+  if(need === 'info') avatar = '🔭 척척박사';
+  else if(need === 'motivation') avatar = '😎 멘토';
+  else if(style === 'fun') avatar = '🤣 개그맨';
+  else if(style === 'warm') avatar = '🥰 다정한친구';
+  else if(gender === '여자') avatar = '👧 찐친여사친';
+  else if(age === '30대') avatar = '🧑‍💼 직장선배';
+  else avatar = '👦 찐친남사친';
+
+  // 말투 결정
+  let talkStyle = '친구같이 편하고 솔직하게, 반말로';
+  if(style === 'fact') talkStyle = '직설적이고 팩트만, 반말로';
+  else if(style === 'fun') talkStyle = '개그맨처럼 웃기게, 반말로';
+  else if(style === 'warm') talkStyle = '다정하고 따뜻하게, 반말로';
+
+  // 역할 결정
+  let roles = ['감정 쓰레기통', '개인비서'];
+  if(need === 'emotional') roles = ['감정 쓰레기통', '욕받이', '고민상담사'];
+  else if(need === 'info') roles = ['개인비서', '공부도우미'];
+  else if(need === 'motivation') roles = ['응원단', '운동파트너'];
+
+  // 세부 스타일
+  const detailStyle = `${talkStyle} / 성별:${gender||'남자'} / 나이:${age||'20대'} / 관계:친구 / 성격:${style==='warm'?'다정함':style==='fact'?'직설적':'유머러스'} / 말버릇:${mbti==='E'?'ㅋㅋ를 자주 씀':'자연스럽게'}`;
+
+  const{data,error}=await sb.from('chatrooms').insert({
+    user_id: currentUser.id,
+    name: nickname,
+    nickname,
+    avatar,
+    talk_style: detailStyle,
+    roles
+  }).select().single();
+
+  if(error){ errEl.textContent='실패: '+error.message; return; }
+
+  chatrooms.unshift(data);
+  renderChatrooms();
+  renderHomeList();
+  closeNewRoomModal();
+  showToast(`${nickname} 만들었어! 대화 시작해봐 🎉`);
+
+  // 바로 채팅 열기
+  setTimeout(()=>openChat(data.id), 300);
+}
   // ══════════ TOAST ══════════
 function showToast(msg){
   const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
@@ -1985,8 +2224,7 @@ function makeExclusive(id){
     });
   });
 }
-['ob-avatar','ob-style','nr-avatar','nr-style','nr-gender','nr-age','nr-relation'].forEach(makeExclusive);
-['nr-personality','nr-habit','nr-roles'].forEach(makeMulti);
+['ob-avatar','ob-style'].forEach(makeExclusive);
 
 function makeMulti(id){
   document.getElementById(id)?.querySelectorAll('.tag').forEach(t=>t.addEventListener('click',()=>t.classList.toggle('on')));

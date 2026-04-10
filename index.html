@@ -371,6 +371,9 @@ async function startApp(){
   if(!data){startMatching();return;}
   charData=data;bondLevel=data.bond||0;totalMsgs=data.total_msgs||0;chatDays=data.chat_days||0;
   applyProfile();switchTab('home');await loadMessages();requestNotifPermission();scheduleRandomPing();
+  fetchWeather();
+// 1시간마다 날씨 갱신
+setInterval(fetchWeather, 60*60*1000);
 }
 function applyProfile(){
   const el=id=>document.getElementById(id);
@@ -566,6 +569,28 @@ async function loadMessages(){
 }
 async function saveMsg(role,content){if(!currentUser)return;await sb.from('messages').insert({user_id:currentUser.id,role,content,created_at:new Date().toISOString()});}
 function buildPrompt(){
+  // ══ GPS 날씨 ══
+let currentWeather = null;
+
+async function fetchWeather(){
+  if(!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(async pos=>{
+    const{latitude:lat,longitude:lon}=pos.coords;
+    try{
+      const r=await fetch(
+        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weathercode,windspeed_10m&timezone=auto`
+      );
+      const d=await r.json();
+      const c=d.current;
+      const codes={0:'맑음',1:'대체로맑음',2:'구름조금',3:'흐림',45:'안개',48:'짙은안개',51:'이슬비',53:'이슬비',55:'이슬비',61:'비',63:'비',65:'강한비',71:'눈',73:'눈',75:'강한눈',80:'소나기',81:'소나기',82:'강한소나기',95:'뇌우',96:'뇌우',99:'뇌우'};
+      currentWeather={
+        temp:Math.round(c.temperature_2m),
+        desc:codes[c.weathercode]||'알수없음',
+        wind:Math.round(c.windspeed_10m)
+      };
+    }catch(e){}
+  },()=>{},{timeout:5000});
+}
   const ch=getChar();if(!ch)return '';
   const lv=getLevel();
   const intimacy=['아직 어색하고 거리감 있게','조금씩 친해지는 느낌으로','꽤 친해진 친구처럼','완전 절친처럼','평생 친구처럼 스스럼없이'][lv-1];
@@ -588,7 +613,8 @@ ${ch.style}
 6. 정보 질문엔 정확하게. 모르면 솔직하게.
 7. 착하기만 하지 마. 할 말은 해.
 
-오늘 날짜: ${new Date().toLocaleDateString('ko-KR')}`;
+오늘 날짜: ${new Date().toLocaleDateString('ko-KR')}
+${currentWeather?`현재 날씨: ${currentWeather.temp}°C ${currentWeather.desc} (바람 ${currentWeather.wind}km/h) — 날씨 관련 질문엔 이 정보 활용해`:''}`;
 }
 async function sendFirstMessage(){
   const ch=getChar();if(!ch)return;
@@ -671,11 +697,66 @@ function initEmojiPanel(){const g=document.getElementById('emoji-grid');if(!g)re
 function toggleEmojiPanel(){const p=document.getElementById('emoji-panel');if(!p)return;p.classList.toggle('show');if(p.classList.contains('show'))initEmojiPanel();}
 function insertEmoji(e){const ta=document.getElementById('msg-input');if(!ta)return;const s=ta.selectionStart,en=ta.selectionEnd;ta.value=ta.value.slice(0,s)+e+ta.value.slice(en);ta.selectionStart=ta.selectionEnd=s+e.length;ta.focus();autoResize(ta);}
 document.addEventListener('click',e=>{const p=document.getElementById('emoji-panel');if(!p)return;if(!p.contains(e.target)&&!e.target.closest('.attach-btn'))p.classList.remove('show');});
-function fmtContent(text){if(!text||typeof text!=='string')return '';const parts=text.split(/(https?:\/\/[^\s<>"]+)/g);return parts.map(p=>{if(!p.match(/^https?:\/\//))return p.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');if(/youtube\.com|youtu\.be/i.test(p)){const m=p.match(/(?:v=|youtu\.be\/)([^&?/\s]+)/);const v=m?m[1]:'';return `<a href="${p}" target="_blank" style="color:var(--accent2);text-decoration:underline;word-break:break-all">🎬 ${p}</a>${v?`<br><img src="https://img.youtube.com/vi/${v}/mqdefault.jpg" style="max-width:200px;border-radius:8px;margin-top:4px;cursor:pointer;display:block" onclick="window.open('${p}','_blank')">`:''}`;}return `<a href="${p}" target="_blank" style="color:var(--accent2);text-decoration:underline;word-break:break-all">🔗 ${p}</a>`;}).join('');}
+function fmtContent(text){
+  if(!text||typeof text!=='string')return '';
+  const urlRegex=/(https?:\/\/[^\s<>"']+|www\.[^\s<>"']+)/g;
+  const parts=text.split(urlRegex);
+  return parts.map(p=>{
+    if(!p.match(/^https?:\/\//)&&!p.match(/^www\./))
+      return p.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+    const url=p.startsWith('www.')?'https://'+p:p;
+    if(/youtube\.com|youtu\.be/i.test(url)){
+      const m=url.match(/(?:v=|youtu\.be\/)([^&?/\s]+)/);
+      const v=m?m[1]:'';
+      return `<a href="${url}" target="_blank" style="color:var(--accent2);text-decoration:underline;word-break:break-all">🎬 ${p}</a>${v?`<br><img src="https://img.youtube.com/vi/${v}/mqdefault.jpg" style="max-width:200px;border-radius:8px;margin-top:4px;cursor:pointer;display:block" onclick="window.open('${url}','_blank')">` : ''}`;
+    }
+    return `<a href="${url}" target="_blank" style="color:var(--accent2);text-decoration:underline;word-break:break-all">🔗 ${p}</a>`;
+  }).join('');
+}
 async function toggleNotif(el){el.classList.toggle('on');if(el.classList.contains('on'))await requestNotifPermission();}
 async function requestNotifPermission(){if(!('Notification' in window)||!('serviceWorker' in navigator))return;const perm=await Notification.requestPermission();if(perm!=='granted')return;try{const reg=await navigator.serviceWorker.ready;const existing=await reg.pushManager.getSubscription();if(existing)return;const sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlB64ToU8(VAPID_PUB)});await fetch('/api/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:currentUser.id,subscription:sub})});showToast('알림 설정 완료! 📱');}catch(e){console.error(e);}}
 function urlB64ToU8(b64){const p='='.repeat((4-b64.length%4)%4);const b=(b64+p).replace(/-/g,'+').replace(/_/g,'/');const d=window.atob(b);return Uint8Array.from([...d].map(c=>c.charCodeAt(0)));}
-function scheduleRandomPing(){setTimeout(async()=>{const pingOn=document.getElementById('toggle-ping')?.classList.contains('on');if(pingOn&&Notification.permission==='granted'&&document.hidden){const ch=getChar();const pings=['뭐해?','나 생각났어ㅋ','심심한데 얘기하자','오늘 어때?','밥은 먹었어?'];new Notification(charData?.char_name||'톡다리',{body:pings[Math.floor(Math.random()*pings.length)],icon:'/icon.png'});}scheduleRandomPing();},(2+Math.random()*4)*60*60*1000);}
+function scheduleRandomPing(){
+  // 앱 열려있어도 선톡 (대화창 닫혀있을 때)
+  setTimeout(async()=>{
+    const pingOn=document.getElementById('toggle-ping')?.classList.contains('on');
+    const chatOpen=document.getElementById('chat-screen')?.classList.contains('active');
+
+    if(pingOn&&!chatOpen){
+      const ch=getChar();
+      const lv=getLevel();
+      // 레벨에 따라 다른 선톡
+      const pings=lv<=1
+        ?['...🥚','(알 속에서 기다리는 중)']
+        :lv<=2
+        ?['삐약...! 나 여기 있어','빨리 와줘 기다리고 있어']
+        :ch?.id==='A'
+        ?['야야야 나 생각났어ㅋㅋ','뭐해? 나 심심한데','오늘 어땠어? 빨리 말해봐']
+        :ch?.id==='B'
+        ?['...괜찮아?','오늘 밥은 먹었어','생각나서']
+        :['어 살아있어?','요즘 뭐하냐고','할말있는데 들어볼래'];
+
+      const msg=pings[Math.floor(Math.random()*pings.length)];
+      const name=charData?.char_name||'톡다리';
+
+      // 앱 화면에도 메시지 추가 (채팅창 닫혀있을 때만)
+      if(!chatOpen&&currentUser){
+        appendMsg('ai',msg);
+        messages.push({role:'assistant',content:msg,created_at:new Date().toISOString()});
+        await saveMsg('assistant',msg);
+      }
+
+      // 푸시 알림
+      if(Notification.permission==='granted'&&document.hidden){
+        new Notification(name,{body:msg,icon:'/icon.png'});
+      } else if(!document.hidden){
+        showToast(`${name}: ${msg}`);
+      }
+    }
+    scheduleRandomPing();
+  // 1~3시간 랜덤
+  },(1+Math.random()*2)*60*60*1000);
+}
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
 </script>
 </body>

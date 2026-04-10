@@ -997,25 +997,23 @@ async function autoSaveDiary(){
   if(!messages.length){showToast('대화 내용이 없어!');return;}
   showToast('일기 생성 중... ✨');
   try{
-    const resp=await fetch('/api/summarize',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({messages,date:new Date().toLocaleDateString('ko-KR')})});
-    if(!resp.ok){showToast('생성 실패 ㅠ');return;}
+    const resp=await fetch('/api/summarize',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages,date:new Date().toLocaleDateString('ko-KR')})});
+    if(!resp.ok){showToast('생성 실패ㅠ');return;}
     const r=await resp.json();
-    const text=`${r.highlight?r.highlight+'\n\n':''}${r.summary}${r.keywords?.length?'\n\n📌 '+r.keywords.join(', '):''}`;
+    const text=(r.highlight?r.highlight+'\n\n':'')+r.summary;
     await sb.from('diary').insert({user_id:currentUser.id,mood:r.mood||'😊',content:text});
-    showToast('오늘 일기 자동 저장됐어 📔✨');
-  }catch(e){showToast('오류났어 ㅠ');}
+    showToast('일기 저장됐어 📔✨');
+  }catch(e){showToast('오류났어ㅠ');}
 }
 
 // ══════════ 이별 ══════════
 async function confirmDeleteChar(){
-  if(!confirm(`"${character?.char_name}"와 이별할까?\n\n모든 대화 기록이 삭제되고\n새로운 친구를 만날 수 있어.\n\n⚠️ 되돌릴 수 없어!`))return;
-  if(!confirm('정말로? 진짜 이별이야...'))return;
+  if(!confirm('"'+( charData?.char_name||'친구')+'"와 이별할까?\n\n모든 대화 기록이 삭제되고\n새 친구를 만날 수 있어.\n되돌릴 수 없어!'))return;
+  if(!confirm('정말? 진짜 이별이야...'))return;
   showToast('이별 처리 중...');
   await sb.from('messages').delete().eq('user_id',currentUser.id);
   await sb.from('user_characters').delete().eq('user_id',currentUser.id);
-  await sb.from('diary').delete().eq('user_id',currentUser.id);
-  character=null;messages=[];bondLevel=0;totalMsgs=0;
+  charData=null;messages=[];bondLevel=0;totalMsgs=0;chatDays=0;
   showToast('이별했어... 새로운 만남이 기다리고 있어');
   setTimeout(()=>startMatching(),1500);
 }

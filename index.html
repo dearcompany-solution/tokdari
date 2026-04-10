@@ -1207,6 +1207,18 @@ async function saveMessage(role, content){
 
   const room=chatrooms.find(r=>r.id===currentRoom.id);
   if(room){room.last_msg=preview;room.updated_at=new Date().toISOString();}
+
+  // 20번째 메시지마다 대화 특성 분석
+  if(messages.length > 0 && messages.length % 20 === 0){
+    fetch('/api/analyze-room', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        chatroomId: currentRoom.id,
+        userId: currentUser.id
+      })
+    }).catch(()=>{});
+  }
 }
 
 // ══════════ CHAT ══════════

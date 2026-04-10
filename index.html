@@ -993,7 +993,7 @@ function renderChatrooms(){
       <div class="room-avatar">${(room.avatar||'👦').split(' ')[0]}</div>
       <div class="room-info">
         <div class="room-name">${room.name||room.nickname}</div>
-        <div class="room-last">${(room.talk_style||'').replace(', 반말로','')}</div>
+        <div class="room-last">${room.last_msg||'대화를 시작해봐 👋'}</div>
       </div>
       <button class="room-delete" onclick="event.stopPropagation();deleteRoom(${room.id})">삭제</button>
     </div>`).join('');

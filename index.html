@@ -1127,3 +1127,573 @@ function showToast(msg){
 </script>
 </body>
 </html>
+<style>
+:root{--bg:#0d0d1a;--bg2:#13132a;--bg3:#1a1a35;--accent:#7c3aed;--accent2:#a78bfa;--pink:#ec4899;--text:#f0f0ff;--text2:#9999bb;--text3:#6666aa;--bubble-ai:#1e1e3f;--bubble-user:#5b21b6;--border:rgba(124,58,237,0.2);--green:#22c55e;--divider:rgba(255,255,255,0.06)}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Noto Sans KR',sans-serif;color:var(--text)}
+#splash{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:999}
+#splash h1{font-size:2rem;font-weight:700;background:linear-gradient(135deg,var(--accent2),var(--pink));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+#splash p{font-size:.85rem;color:var(--text3)}
+.splash-char{font-size:5rem;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+.auth-wrap{position:fixed;inset:0;background:var(--bg);display:none;flex-direction:column;align-items:center;justify-content:center;padding:1.5rem;z-index:100;gap:1rem;overflow-y:auto}
+.auth-wrap.show{display:flex}
+.auth-title{font-size:1.5rem;font-weight:700;background:linear-gradient(135deg,var(--accent2),var(--pink));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.auth-sub{font-size:.82rem;color:var(--text3);text-align:center}
+.auth-box{width:100%;max-width:360px;background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:1.4rem;display:flex;flex-direction:column;gap:12px}
+.auth-label{font-size:.72rem;color:var(--text3);font-weight:600}
+.auth-input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:12px 14px;color:var(--text);font-size:.95rem;outline:none;font-family:'Noto Sans KR',sans-serif;transition:border-color .2s}
+.auth-input:focus{border-color:var(--accent)}
+.auth-btn{width:100%;max-width:360px;padding:1rem;background:linear-gradient(135deg,var(--accent),var(--pink));border:none;border-radius:14px;color:#fff;font-size:1rem;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif}
+.auth-btn:active{opacity:.85}
+.auth-switch{font-size:.82rem;color:var(--text3);cursor:pointer;text-align:center}
+.auth-switch span{color:var(--accent2);text-decoration:underline}
+.auth-error{font-size:.78rem;color:#f87171;text-align:center;min-height:18px}
+#matching{position:fixed;inset:0;background:var(--bg);display:none;flex-direction:column;align-items:center;justify-content:center;padding:1.5rem 1rem;z-index:100;gap:1.2rem;overflow-y:auto}
+#matching.show{display:flex}
+.match-progress{display:flex;gap:8px;justify-content:center}
+.match-dot{width:8px;height:8px;border-radius:50%;background:var(--border);transition:background .3s}
+.match-dot.active{background:var(--accent2)}
+.match-scene{font-size:.82rem;color:var(--text3);text-align:center;padding:.6rem .8rem;background:var(--bg2);border-radius:12px;max-width:340px;width:100%;line-height:1.6;font-style:italic}
+.match-question{font-size:1.05rem;font-weight:700;text-align:center;max-width:340px;line-height:1.6}
+.match-choices{width:100%;max-width:360px;display:flex;flex-direction:column;gap:10px}
+.match-choice{padding:1rem 1.2rem;background:var(--bg2);border:1.5px solid var(--border);border-radius:16px;color:var(--text);font-size:.88rem;cursor:pointer;text-align:left;font-family:'Noto Sans KR',sans-serif;transition:all .15s;line-height:1.5}
+.match-choice.selected{border-color:var(--accent);background:rgba(124,58,237,.15);color:var(--accent2)}
+.match-result{text-align:center;display:flex;flex-direction:column;align-items:center;gap:14px;max-width:340px;width:100%}
+.match-char-big{font-size:6rem;animation:pulse 2s infinite}
+.match-char-type{font-size:.78rem;color:var(--accent2);font-weight:600;letter-spacing:.05em}
+.match-char-name{font-size:1.6rem;font-weight:700}
+.match-char-desc{font-size:.85rem;color:var(--text2);line-height:1.7}
+#app{position:fixed;inset:0;display:none;flex-direction:column}
+#app.show{display:flex}
+#chat-screen{position:fixed;inset:0;display:none;flex-direction:column;background:var(--bg);z-index:50}
+#chat-screen.active{display:flex}
+#tab-content{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0}
+.tab-screen{display:none;flex-direction:column;flex:1;overflow:hidden;min-height:0}
+.tab-screen.active{display:flex}
+.app-header{background:var(--bg2);border-bottom:1px solid var(--divider);padding:.8rem 1rem;display:flex;align-items:center;gap:10px;flex-shrink:0}
+.hdr-title{font-size:1.05rem;font-weight:700}
+.hbtn{background:none;border:none;color:var(--text2);font-size:1.2rem;cursor:pointer;padding:6px;border-radius:8px}
+.header-actions{margin-left:auto;display:flex;gap:2px}
+#home-screen{background:var(--bg);overflow-y:auto}
+.home-inner{display:flex;flex-direction:column;align-items:center;padding:1.2rem 1rem 2rem;gap:1rem}
+.char-stage{width:180px;height:180px;border-radius:50%;background:linear-gradient(135deg,var(--bg2),var(--bg3));border:3px solid var(--border);display:flex;align-items:center;justify-content:center;position:relative;margin:.5rem 0;transition:all .5s}
+.char-emoji{font-size:5rem;transition:all .5s}
+.char-aura{position:absolute;inset:-8px;border-radius:50%;border:2px solid transparent;animation:aura 3s infinite}
+@keyframes aura{0%,100%{border-color:rgba(124,58,237,.2);transform:scale(1)}50%{border-color:rgba(167,139,250,.5);transform:scale(1.04)}}
+.char-name-disp{font-size:1.3rem;font-weight:700}
+.char-type-disp{font-size:.78rem;color:var(--accent2);font-weight:600}
+.char-level-disp{font-size:.78rem;color:var(--text3)}
+.bond-wrap{width:100%;max-width:300px}
+.bond-label{display:flex;justify-content:space-between;font-size:.75rem;color:var(--text3);margin-bottom:6px}
+.bond-bar{width:100%;height:8px;background:var(--bg3);border-radius:4px;overflow:hidden}
+.bond-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--pink));border-radius:4px;transition:width 1s}
+.status-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;max-width:300px}
+.stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:.8rem;text-align:center}
+.stat-val{font-size:1.3rem;font-weight:700;color:var(--accent2)}
+.stat-lbl{font-size:.68rem;color:var(--text3);margin-top:2px}
+.today-msg{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:.9rem 1.2rem;width:100%;max-width:300px;display:flex;align-items:center;gap:10px}
+.today-icon{font-size:1.8rem}
+.today-text{font-size:.83rem;color:var(--text2);flex:1;line-height:1.5}
+.chat-start-btn{width:100%;max-width:300px;padding:1rem;background:linear-gradient(135deg,var(--accent),var(--pink));border:none;border-radius:16px;color:#fff;font-size:1rem;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;display:flex;align-items:center;justify-content:center;gap:8px}
+.chat-start-btn:active{opacity:.85}
+.chat-hdr-av{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--pink));display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;position:relative}
+.online-dot{width:9px;height:9px;background:var(--green);border-radius:50%;position:absolute;bottom:0;right:0;border:2px solid var(--bg2)}
+.chat-hdr-name{font-weight:700;font-size:.95rem}
+.chat-hdr-status{font-size:.68rem;color:var(--green)}
+#chat-messages{flex:1;overflow-y:auto;padding:.75rem;display:flex;flex-direction:column;gap:4px;background:var(--bg)}
+#chat-messages::-webkit-scrollbar{width:3px}
+#chat-messages::-webkit-scrollbar-thumb{background:var(--border);border-radius:10px}
+.msg-row{display:flex;align-items:flex-end;gap:6px;margin-bottom:2px}
+.msg-row.user{flex-direction:row-reverse}
+.msg-av{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--pink));display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;align-self:flex-start}
+.msg-col{display:flex;flex-direction:column;gap:2px;max-width:75%}
+.msg-row.user .msg-col{align-items:flex-end}
+.bubble{padding:10px 14px;border-radius:18px;font-size:.9rem;line-height:1.6;word-break:break-word}
+.bubble.ai{background:var(--bubble-ai);color:var(--text);border-top-left-radius:4px}
+.bubble.user{background:var(--bubble-user);color:#fff;border-top-right-radius:4px}
+.bubble img{max-width:100%;border-radius:10px;display:block;max-height:200px}
+.msg-time{font-size:.6rem;color:var(--text3);white-space:nowrap}
+.date-div{text-align:center;font-size:.7rem;color:var(--text3);margin:8px 0;padding:0 40px;position:relative}
+.date-div::before,.date-div::after{content:'';position:absolute;top:50%;height:1px;background:var(--divider);width:30%}
+.date-div::before{left:0}.date-div::after{right:0}
+.typing-bubble{background:var(--bubble-ai);border-radius:18px;border-top-left-radius:4px;padding:12px 16px;display:inline-flex;gap:4px;align-items:center}
+.tdot{width:7px;height:7px;background:var(--text3);border-radius:50%;animation:tdot 1.2s infinite}
+.tdot:nth-child(2){animation-delay:.2s}.tdot:nth-child(3){animation-delay:.4s}
+@keyframes tdot{0%,80%,100%{transform:translateY(0);opacity:.4}40%{transform:translateY(-6px);opacity:1}}
+.input-bar{background:var(--bg2);border-top:1px solid var(--divider);padding:.5rem .75rem;display:flex;align-items:flex-end;gap:5px;padding-bottom:max(.5rem,env(safe-area-inset-bottom));flex-shrink:0;box-sizing:border-box;width:100%}
+.input-wrap{position:relative;flex:1;display:flex;flex-direction:column;min-width:0}
+.input-bar textarea{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:22px;padding:8px 12px;color:var(--text);font-size:.9rem;outline:none;resize:none;max-height:120px;min-height:38px;font-family:'Noto Sans KR',sans-serif;line-height:1.5;transition:border-color .2s;width:100%}
+.input-bar textarea:focus{border-color:var(--accent)}
+.send-btn{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--pink));border:none;color:#fff;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;touch-action:manipulation}
+.send-btn:active{opacity:.85}
+.attach-btn{width:32px;height:32px;border-radius:50%;background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:.9rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.emoji-panel{display:none;position:absolute;bottom:100%;left:0;right:0;background:var(--bg2);border-top:1px solid var(--divider);padding:8px;z-index:20}
+.emoji-panel.show{display:block}
+.emoji-grid{display:flex;flex-wrap:wrap;gap:2px;max-height:140px;overflow-y:auto}
+.emoji-btn{font-size:1.5rem;padding:5px;border-radius:8px;cursor:pointer;background:none;border:none;line-height:1}
+.img-preview{position:relative;display:inline-block;margin-bottom:6px}
+.img-preview img{max-height:80px;border-radius:10px;display:block}
+.img-preview-del{position:absolute;top:-6px;right:-6px;width:18px;height:18px;background:#f87171;border-radius:50%;border:none;color:#fff;font-size:.7rem;cursor:pointer;display:flex;align-items:center;justify-content:center}
+#chat-screen.trash .app-header{background:#1a0505;border-bottom-color:rgba(239,68,68,.3)}
+#chat-screen.trash #chat-messages{background:#0d0505}
+#chat-screen.trash .input-bar{background:#1a0505;border-top-color:rgba(239,68,68,.25)}
+#settings-screen{background:var(--bg);overflow-y:auto}
+.settings-body{padding:.75rem;display:flex;flex-direction:column;gap:12px}
+.settings-section{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:1rem;display:flex;flex-direction:column;gap:12px}
+.settings-section h3{font-size:.75rem;color:var(--text3);font-weight:600;letter-spacing:.05em;text-transform:uppercase}
+.toggle-row{display:flex;align-items:center;justify-content:space-between}
+.toggle-label{font-size:.88rem}
+.toggle{width:48px;height:27px;background:var(--bg3);border-radius:14px;border:1px solid var(--border);position:relative;cursor:pointer;transition:background .2s}
+.toggle.on{background:var(--accent);border-color:var(--accent)}
+.toggle-thumb{width:21px;height:21px;background:#fff;border-radius:50%;position:absolute;top:2px;left:2px;transition:transform .2s}
+.toggle.on .toggle-thumb{transform:translateX(21px)}
+.settings-info{font-size:.78rem;color:var(--text3);text-align:center;padding:.5rem 0}
+.logout-btn{width:100%;padding:.9rem;background:transparent;border:1px solid rgba(239,68,68,.3);border-radius:12px;color:#f87171;font-size:.9rem;cursor:pointer;font-family:'Noto Sans KR',sans-serif}
+.danger-btn{width:100%;padding:.9rem;background:transparent;border:1px solid rgba(239,68,68,.3);border-radius:12px;color:#f87171;font-size:.9rem;cursor:pointer;font-family:'Noto Sans KR',sans-serif}
+.prepare-btn{width:100%;padding:.9rem;background:var(--bg3);border:1px solid var(--border);border-radius:12px;color:var(--text2);font-size:.9rem;cursor:pointer;font-family:'Noto Sans KR',sans-serif}
+.tab-bar{background:var(--bg2);border-top:1px solid var(--divider);display:flex;flex-shrink:0;padding-bottom:env(safe-area-inset-bottom)}
+.tab-item{flex:1;display:flex;flex-direction:column;align-items:center;padding:9px 0 7px;cursor:pointer;background:none;border:none;gap:3px}
+.tab-item .ti{font-size:1.3rem;line-height:1}
+.tab-item .tl{font-size:.62rem;color:var(--text3);transition:color .15s}
+.tab-item.active .tl{color:var(--accent2);font-weight:700}
+.tab-item.active .ti{filter:drop-shadow(0 0 4px var(--accent))}
+.toast{position:fixed;bottom:85px;left:50%;transform:translateX(-50%) translateY(10px);background:rgba(30,30,60,.95);border:1px solid var(--border);border-radius:20px;padding:8px 18px;font-size:.82rem;color:var(--text);opacity:0;transition:all .25s;pointer-events:none;white-space:nowrap;z-index:500}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.lv-glow-2{box-shadow:0 0 25px rgba(124,58,237,.4)}
+.lv-glow-3{box-shadow:0 0 35px rgba(167,139,250,.5)}
+.lv-glow-4{box-shadow:0 0 45px rgba(236,72,153,.6)}
+.lv-glow-5{box-shadow:0 0 55px rgba(236,72,153,.8);animation:glow5 2s infinite}
+@keyframes glow5{0%,100%{box-shadow:0 0 55px rgba(236,72,153,.8)}50%{box-shadow:0 0 70px rgba(167,139,250,1)}}
+</style>
+</head>
+<body>
+<div id="splash">
+  <div class="splash-char" id="splash-char">🌱</div>
+  <h1>톡다리</h1>
+  <p>잠깐만, 불러오는 중...</p>
+</div>
+<div class="auth-wrap" id="login-screen">
+  <div style="font-size:3rem">🌱</div>
+  <div class="auth-title">다시 왔구나!</div>
+  <div class="auth-sub">이메일이랑 비밀번호 입력해줘</div>
+  <div class="auth-box">
+    <div><div class="auth-label">이메일</div><input class="auth-input" id="li-email" type="email" placeholder="이메일 입력" autocomplete="email"></div>
+    <div><div class="auth-label">비밀번호</div><input class="auth-input" id="li-password" type="password" placeholder="비밀번호" autocomplete="current-password"></div>
+    <div class="auth-error" id="li-error"></div>
+  </div>
+  <button class="auth-btn" onclick="doLogin()">로그인 →</button>
+  <div class="auth-switch" onclick="showSignup()">계정이 없어? <span>회원가입</span></div>
+</div>
+<div class="auth-wrap" id="signup-screen">
+  <div style="font-size:3rem">🌱</div>
+  <div class="auth-title">톡다리 시작하기</div>
+  <div class="auth-sub">나만의 친구를 만들어봐!</div>
+  <div class="auth-box">
+    <div><div class="auth-label">이름</div><input class="auth-input" id="su-name" type="text" placeholder="홍길동" autocomplete="name"></div>
+    <div><div class="auth-label">이메일</div><input class="auth-input" id="su-email" type="email" placeholder="example@email.com" autocomplete="email"></div>
+    <div><div class="auth-label">비밀번호 (6자리 이상)</div><input class="auth-input" id="su-password" type="password" placeholder="••••••" autocomplete="new-password"></div>
+    <div class="auth-error" id="su-error"></div>
+  </div>
+  <button class="auth-btn" onclick="doSignup()">가입하기 →</button>
+  <div class="auth-switch" onclick="showLogin()">이미 계정이 있어? <span>로그인</span></div>
+</div>
+<div id="matching">
+  <div class="match-progress" id="match-progress"></div>
+  <div class="match-question" id="match-q" style="display:none"></div>
+  <div class="match-scene" id="match-scene" style="display:none"></div>
+  <div class="match-choices" id="match-choices"></div>
+  <div class="match-result" id="match-result" style="display:none">
+    <div class="match-char-big" id="result-char"></div>
+    <div class="match-char-type" id="result-type"></div>
+    <div class="match-char-name" id="result-name"></div>
+    <div style="font-size:.85rem;color:var(--text3)">가 운명처럼 찾아왔어</div>
+    <div class="match-char-desc" id="result-desc"></div>
+    <button class="auth-btn" style="max-width:300px;width:100%;margin-top:.5rem" onclick="startWithCharacter()">만나러 가기 →</button>
+  </div>
+</div>
+<div id="app">
+  <div id="chat-screen">
+    <div class="app-header">
+      <button class="hbtn" onclick="goBackToHome()" style="font-size:1.4rem">←</button>
+      <div class="chat-hdr-av"><span id="chat-char-icon">🌱</span><div class="online-dot"></div></div>
+      <div>
+        <div class="chat-hdr-name" id="chat-char-name">친구</div>
+        <div class="chat-hdr-status" id="chat-status">온라인</div>
+      </div>
+      <div class="header-actions">
+        <button class="hbtn" onclick="autoSaveDiary()">✨</button>
+        <button class="hbtn" onclick="toggleTrash()">💢</button>
+      </div>
+    </div>
+    <div id="chat-messages"></div>
+    <div class="input-bar">
+      <button class="attach-btn" onclick="document.getElementById('media-input').click()">📷</button>
+      <input type="file" id="media-input" accept="image/*,video/*" style="display:none" onchange="handleMedia(event)">
+      <div class="input-wrap">
+        <div class="emoji-panel" id="emoji-panel"><div class="emoji-grid" id="emoji-grid"></div></div>
+        <div id="img-preview-wrap"></div>
+        <textarea id="msg-input" placeholder="메시지 입력..." rows="1" oninput="autoResize(this)"></textarea>
+      </div>
+      <button class="attach-btn" onclick="toggleEmojiPanel()">😊</button>
+      <button class="send-btn" onclick="sendMessage()">↑</button>
+    </div>
+  </div>
+  <div id="tab-content">
+    <div id="home-screen" class="tab-screen active">
+      <div class="app-header">
+        <div class="hdr-title">톡다리 🌱</div>
+        <div style="margin-left:auto;font-size:.75rem;color:var(--text3)" id="home-username"></div>
+      </div>
+      <div class="home-inner">
+        <div class="char-stage" id="char-stage">
+          <div class="char-aura"></div>
+          <div class="char-emoji" id="char-emoji">🌱</div>
+        </div>
+        <div class="char-name-disp" id="char-name-disp">??</div>
+        <div class="char-type-disp" id="char-type-disp"></div>
+        <div class="char-level-disp" id="char-level-disp">Lv.1 · 새싹</div>
+        <div class="bond-wrap">
+          <div class="bond-label"><span>친밀도</span><span id="bond-percent">0%</span></div>
+          <div class="bond-bar"><div class="bond-fill" id="bond-fill" style="width:0%"></div></div>
+        </div>
+        <div class="status-grid">
+          <div class="stat-card"><div class="stat-val" id="stat-msgs">0</div><div class="stat-lbl">총 대화</div></div>
+          <div class="stat-card"><div class="stat-val" id="stat-days">0</div><div class="stat-lbl">대화한 날</div></div>
+          <div class="stat-card"><div class="stat-val" id="stat-level">1</div><div class="stat-lbl">레벨</div></div>
+          <div class="stat-card"><div class="stat-val" id="stat-mood">😊</div><div class="stat-lbl">오늘 기분</div></div>
+        </div>
+        <div class="today-msg">
+          <div class="today-icon" id="today-icon">🌱</div>
+          <div class="today-text" id="today-text">대화하러 와줘서 기다리고 있었어!</div>
+        </div>
+        <button class="chat-start-btn" onclick="openChat()">
+          <span>💬</span><span id="chat-btn-text">대화하기</span>
+        </button>
+      </div>
+    </div>
+    <div id="settings-screen" class="tab-screen">
+      <div class="app-header"><div class="hdr-title">설정 ⚙️</div></div>
+      <div class="settings-body">
+        <div class="settings-section">
+          <h3>알림 설정</h3>
+          <div class="toggle-row"><span class="toggle-label">앱 알림 허용</span><div class="toggle on" id="toggle-notif" onclick="toggleNotif(this)"><div class="toggle-thumb"></div></div></div>
+          <div class="toggle-row"><span class="toggle-label">먼저 선톡 받기</span><div class="toggle on" id="toggle-ping" onclick="this.classList.toggle('on')"><div class="toggle-thumb"></div></div></div>
+          <div class="toggle-row"><span class="toggle-label">알림음</span><div class="toggle on" id="toggle-sound" onclick="this.classList.toggle('on')"><div class="toggle-thumb"></div></div></div>
+          <div class="toggle-row"><span class="toggle-label">진동</span><div class="toggle on" id="toggle-vibrate" onclick="this.classList.toggle('on')"><div class="toggle-thumb"></div></div></div>
+        </div>
+        <div class="settings-section">
+          <h3>친구 관리</h3>
+          <button class="danger-btn" onclick="confirmDeleteChar()">😢 지금 친구와 이별하기</button>
+          <button class="prepare-btn" onclick="alert('준비중이야! 곧 만날 수 있어 🙏')">✨ 친구 추가하기 (준비중)</button>
+        </div>
+        <div class="settings-info" id="settings-user-info"></div>
+        <button class="logout-btn" onclick="doLogout()">로그아웃</button>
+      </div>
+    </div>
+    <div class="tab-bar">
+      <button class="tab-item active" id="tab-home" onclick="switchTab('home')"><span class="ti">🏠</span><span class="tl">홈</span></button>
+      <button class="tab-item" id="tab-settings" onclick="switchTab('settings')"><span class="ti">⚙️</span><span class="tl">설정</span></button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+const SUPA_URL='https://aeswnjssbaoqwicmgarb.supabase.co';
+const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFlc3duanNzYmFvcXdpY21nYXJiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2MTI4ODIsImV4cCI6MjA5MTE4ODg4Mn0.kNN-ggvTe44co49Qe0ywahxKFhRVfrwwVJJQ-kJTwE0';
+const VAPID_PUB='BIhrfjbJS3R9LPm8zha8VfPHkebk68TqF5h4XhOJ5KaO3blVj2KnCZnVkO9hrkxROxdFk5vqJDAB9a4sjB-7GeU';
+const sb=supabase.createClient(SUPA_URL,SUPA_KEY);
+const CHARS={
+  A:{id:'A',name:'리아',icon:'🌸',type:'ENFP · 에너지 부스터',desc:'활발하고 유머러스해. 어떤 상황도 밝게 만들어주는 찐 에너지 메이커야. 가끔 오버하지만 그게 매력이야.',style:'에너지 넘치고 유머러스하게, 반말로',icons:['🌱','🌸','🌺','🌹','💐'],rude:.3,ignore:.1,slow:.2},
+  B:{id:'B',name:'준',icon:'🌊',type:'ISFJ · 섬세한 수호자',desc:'조용하지만 깊어. 네 말을 끝까지 들어주고, 아무도 못 느끼는 걸 먼저 챙겨줘. 근데 가끔 직구 날려.',style:'다정하지만 직설적으로, 반말로',icons:['🌱','🌊','🌀','💧','🔮'],rude:.15,ignore:.2,slow:.35},
+  C:{id:'C',name:'세진',icon:'⚡',type:'ENTP · 논리적 토론가',desc:'반박 좋아하고 논리적이야. 근데 그게 싫지 않아. 오히려 네 생각을 더 깊게 만들어줘. 가끔 싸가지 없음.',style:'직설적이고 논리적으로, 반말로. 가끔 반박해',icons:['🌱','⚡','🔥','💥','👑'],rude:.5,ignore:.15,slow:.15}
+};
+const MATCH_Qs=[
+  {scene:'📱 어느 날 갑자기 모르는 번호로 문자가 왔어.',real_q:'뭐라고 적혀있냐면... "야 나 오늘 너무 힘들었어" 넌 어떻게 답할래?',choices:[{text:'ㅋㅋ 누구야? 근데 뭔 일인데, 말해봐',val:'A'},{text:'...일단 무슨 일인지 들어볼게. 괜찮아?',val:'B'},{text:'번호 확인부터. 상황 파악이 먼저 아님?',val:'C'}]},
+  {scene:null,q:'친구가 내 아이디어에 "그거 좀 별로인 것 같아"라고 했어. 어떻게 반응해?',choices:[{text:'에이~ 내 아이디어 완전 좋거든? 다시 봐봐ㅋㅋ',val:'A'},{text:'음... 왜 그렇게 생각해? 듣고 싶어',val:'B'},{text:'어떤 부분이 별로인지 논리적으로 설명해봐',val:'C'}]},
+  {scene:null,q:'요즘 지쳐있을 때 가장 필요한 게 뭐야?',choices:[{text:'같이 웃으면서 수다 떨 친구',val:'A'},{text:'말 안 해도 옆에 있어줄 누군가',val:'B'},{text:'현실적인 조언과 해결책',val:'C'}]},
+  {scene:null,q:'좋아하는 대화 스타일은?',choices:[{text:'활발하고 재밌게, 이것저것 다 얘기해',val:'A'},{text:'깊고 진지하게, 진심을 나눠',val:'B'},{text:'논리적으로, 생각을 확장시켜줘',val:'C'}]}
+];
+let currentUser=null,profile={},charData=null;
+let messages=[],isLoading=false,trashMode=false;
+let currentTab='home',pendingMedia=null;
+let matchAnswers=[],matchStep=0,matchedChar=null;
+let bondLevel=0,totalMsgs=0,chatDays=0;
+function saveSession(p){try{localStorage.setItem('tdv3',JSON.stringify({id:String(p.id||''),name:String(p.name||''),email:String(p.email||''),auth_id:String(p.auth_id||''),char_id:String(p.char_id||''),char_name:String(p.char_name||'')}));}catch(e){}}
+function loadSession(){try{return JSON.parse(localStorage.getItem('tdv3'));}catch{return null;}}
+function clearSession(){localStorage.removeItem('tdv3');}
+window.addEventListener('load',async()=>{
+  if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+  const saved=loadSession();
+  if(saved?.id){profile=saved;currentUser={id:saved.id};await startApp();}
+  else{hideSplash();showLogin();}
+});
+function hideSplash(){setTimeout(()=>{const s=document.getElementById('splash');if(s)s.style.display='none';},600);}
+function showLogin(){document.getElementById('login-screen').classList.add('show');document.getElementById('signup-screen').classList.remove('show');}
+function showSignup(){document.getElementById('signup-screen').classList.add('show');document.getElementById('login-screen').classList.remove('show');}
+async function doSignup(){
+  const name=document.getElementById('su-name').value.trim();
+  const email=document.getElementById('su-email').value.trim();
+  const password=document.getElementById('su-password').value.trim();
+  const errEl=document.getElementById('su-error');
+  if(!name||!email||!password){errEl.textContent='모든 항목 입력해줘!';return;}
+  if(password.length<6){errEl.textContent='비밀번호는 6자리 이상!';return;}
+  errEl.textContent='가입 중...';
+  const r=await fetch('/api/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'signup',email,password,name,username:email.split('@')[0]})});
+  const res=await r.json();
+  if(!r.ok){errEl.textContent=res.error||'가입 실패ㅠ';return;}
+  await doLoginWith(email,password,errEl);
+}
+async function doLogin(){
+  const email=document.getElementById('li-email').value.trim();
+  const password=document.getElementById('li-password').value.trim();
+  const errEl=document.getElementById('li-error');
+  if(!email||!password){errEl.textContent='이메일이랑 비번 입력해줘!';return;}
+  errEl.textContent='로그인 중...';
+  await doLoginWith(email,password,errEl);
+}
+async function doLoginWith(email,password,errEl){
+  const r=await fetch('/api/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'login',email,password})});
+  const res=await r.json();
+  if(!r.ok){if(errEl)errEl.textContent=res.error||'로그인 실패ㅠ';return;}
+  profile=res.profile;currentUser={id:res.profile.id};
+  saveSession({...res.profile,token:res.token});
+  if(errEl)errEl.textContent='';
+  hideSplash();await startApp();
+}
+async function doLogout(){if(!confirm('로그아웃 할까?'))return;clearSession();currentUser=null;profile={};messages=[];charData=null;document.getElementById('app').classList.remove('show');document.getElementById('app').style.display='';showLogin();}
+async function startApp(){
+  ['login-screen','signup-screen'].forEach(id=>document.getElementById(id)?.classList.remove('show'));
+  document.getElementById('matching').classList.remove('show');
+  const appEl=document.getElementById('app');appEl.classList.add('show');appEl.style.display='flex';
+  hideSplash();
+  const{data}=await sb.from('user_characters').select('*').eq('user_id',currentUser.id).maybeSingle();
+  if(!data){startMatching();return;}
+  charData=data;bondLevel=data.bond||0;totalMsgs=data.total_msgs||0;chatDays=data.chat_days||0;
+  applyProfile();switchTab('home');await loadMessages();requestNotifPermission();scheduleRandomPing();
+}
+function applyProfile(){
+  const el=id=>document.getElementById(id);
+  if(el('home-username'))el('home-username').textContent=profile.name?profile.name+'님':'';
+  if(el('settings-user-info'))el('settings-user-info').textContent=`${profile.name||''} (${profile.email||''})`;
+  updateCharDisplay();
+}
+function startMatching(){matchAnswers=[];matchStep=0;matchedChar=null;document.getElementById('app').classList.remove('show');document.getElementById('matching').classList.add('show');document.getElementById('match-result').style.display='none';renderMatchQ();}
+function renderMatchQ(){
+  const q=MATCH_Qs[matchStep];
+  const dots=document.getElementById('match-progress');
+  dots.innerHTML=MATCH_Qs.map((_,i)=>`<div class="match-dot${i<=matchStep?' active':''}"></div>`).join('');
+  const qEl=document.getElementById('match-q');
+  const scEl=document.getElementById('match-scene');
+  const chEl=document.getElementById('match-choices');
+  if(q.scene){scEl.style.display='block';scEl.textContent=q.scene;qEl.style.display='block';qEl.textContent=q.real_q;}
+  else{scEl.style.display='none';qEl.style.display='block';qEl.textContent=q.q;}
+  chEl.innerHTML=q.choices.map(c=>`<button class="match-choice" onclick="matchPick('${c.val}',this)">${c.text}</button>`).join('');
+}
+function matchPick(val,el){
+  document.querySelectorAll('.match-choice').forEach(b=>b.classList.remove('selected'));el.classList.add('selected');matchAnswers.push(val);
+  setTimeout(()=>{matchStep++;if(matchStep<MATCH_Qs.length)renderMatchQ();else showMatchResult();},350);
+}
+function showMatchResult(){
+  const cnt={A:0,B:0,C:0};matchAnswers.forEach(a=>cnt[a]=(cnt[a]||0)+1);
+  const id=Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a])[0];matchedChar=CHARS[id];
+  document.getElementById('match-q').style.display='none';document.getElementById('match-scene').style.display='none';
+  document.getElementById('match-choices').innerHTML='';document.querySelectorAll('.match-dot').forEach(d=>d.classList.add('active'));
+  document.getElementById('result-char').textContent=matchedChar.icon;
+  document.getElementById('result-type').textContent=matchedChar.type;
+  document.getElementById('result-name').textContent=`"${matchedChar.name}"`;
+  document.getElementById('result-desc').textContent=matchedChar.desc;
+  document.getElementById('match-result').style.display='flex';
+}
+async function startWithCharacter(){
+  if(!matchedChar)return;
+  const{error}=await sb.from('user_characters').insert({user_id:currentUser.id,char_id:matchedChar.id,char_name:matchedChar.name,bond:0,total_msgs:0,chat_days:0,personality_data:{},created_at:new Date().toISOString()});
+  if(error){showToast('저장 실패 ㅠ '+error.message);return;}
+  charData={...matchedChar,bond:0,total_msgs:0,chat_days:0};bondLevel=0;totalMsgs=0;chatDays=0;
+  document.getElementById('matching').classList.remove('show');
+  const appEl=document.getElementById('app');appEl.classList.add('show');appEl.style.display='flex';
+  applyProfile();switchTab('home');setTimeout(()=>openChat(),600);
+}
+function getChar(){return charData?CHARS[charData.char_id]||null:null;}
+function getLevel(){if(totalMsgs>=500)return 5;if(totalMsgs>=200)return 4;if(totalMsgs>=80)return 3;if(totalMsgs>=30)return 2;return 1;}
+function getLvName(lv){return['새싹','친해지는중','단짝','절친','운명'][lv-1]||'새싹';}
+function updateCharDisplay(){
+  const ch=getChar();if(!ch)return;
+  const lv=getLevel();
+  const icon=ch.icons[Math.min(lv-1,ch.icons.length-1)]||ch.icon;
+  const name=charData?.char_name||ch.name;
+  const el=id=>document.getElementById(id);
+  if(el('char-emoji'))el('char-emoji').textContent=icon;
+  if(el('chat-char-icon'))el('chat-char-icon').textContent=icon;
+  if(el('char-name-disp'))el('char-name-disp').textContent=name;
+  if(el('char-type-disp'))el('char-type-disp').textContent=ch.type;
+  if(el('char-level-disp'))el('char-level-disp').textContent=`Lv.${lv} · ${getLvName(lv)}`;
+  if(el('chat-char-name'))el('chat-char-name').textContent=name;
+  if(el('stat-msgs'))el('stat-msgs').textContent=totalMsgs;
+  if(el('stat-days'))el('stat-days').textContent=chatDays;
+  if(el('stat-level'))el('stat-level').textContent=lv;
+  if(el('splash-char'))el('splash-char').textContent=icon;
+  if(el('today-icon'))el('today-icon').textContent=icon;
+  const bp=Math.min(bondLevel,100);
+  if(el('bond-fill'))el('bond-fill').style.width=bp+'%';
+  if(el('bond-percent'))el('bond-percent').textContent=bp+'%';
+  const stage=document.getElementById('char-stage');
+  if(stage){stage.className='char-stage';if(lv>=5)stage.classList.add('lv-glow-5');else if(lv>=4)stage.classList.add('lv-glow-4');else if(lv>=3)stage.classList.add('lv-glow-3');else if(lv>=2)stage.classList.add('lv-glow-2');}
+  const todayMsgs=['대화하러 와줘서 기다리고 있었어!','오늘 어떤 하루였어?','보고싶었어 ㅋㅋ','야 밥은 먹었어?','오늘도 잘 부탁해'];
+  if(el('today-text'))el('today-text').textContent=todayMsgs[Math.floor(Math.random()*todayMsgs.length)];
+  if(el('chat-btn-text'))el('chat-btn-text').textContent=messages.length>0?'계속 대화하기':'대화하기';
+}
+async function updateBond(){
+  bondLevel=Math.min(bondLevel+1,100);totalMsgs++;
+  const today=new Date().toDateString();const lastDay=localStorage.getItem('td_last_day');
+  if(lastDay!==today){chatDays++;localStorage.setItem('td_last_day',today);}
+  await sb.from('user_characters').update({bond:bondLevel,total_msgs:totalMsgs,chat_days:chatDays,updated_at:new Date().toISOString()}).eq('user_id',currentUser.id);
+  updateCharDisplay();
+}
+function switchTab(tab){
+  currentTab=tab;
+  document.querySelectorAll('.tab-item').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('chat-screen').classList.remove('active');
+  document.getElementById('tab-'+tab)?.classList.add('active');
+  const map={home:'home-screen',settings:'settings-screen'};
+  if(map[tab])document.getElementById(map[tab]).classList.add('active');
+  if(tab==='home')updateCharDisplay();
+}
+function openChat(){document.getElementById('chat-screen').classList.add('active');if(messages.length===0)sendFirstMessage();else setTimeout(scrollToBottom,100);}
+function goBackToHome(){document.getElementById('chat-screen').classList.remove('active');setTrashMode(false);updateCharDisplay();}
+async function loadMessages(){
+  if(!currentUser)return;
+  const{data}=await sb.from('messages').select('*').eq('user_id',currentUser.id).order('created_at',{ascending:true}).limit(100);
+  if(data&&data.length>0){messages=data.map(m=>({role:m.role,content:m.content,created_at:m.created_at}));renderAllMessages();setTimeout(scrollToBottom,100);}
+}
+async function saveMsg(role,content){if(!currentUser)return;await sb.from('messages').insert({user_id:currentUser.id,role,content,created_at:new Date().toISOString()});}
+function buildPrompt(){
+  const ch=getChar();if(!ch)return '';
+  const lv=getLevel();
+  const intimacy=['아직 어색하고 거리감 있게','조금씩 친해지는 느낌으로','꽤 친해진 친구처럼','완전 절친처럼','평생 친구처럼 스스럼없이'][lv-1];
+  return `너는 "${charData?.char_name||ch.name}"이야. 사용자 이름은 "${profile.name}"야.
+성격: ${ch.type}
+${ch.desc}
+
+[친밀도 Lv.${lv} - ${getLvName(lv)}]
+${intimacy} 대화해.
+
+[말투]
+${ch.style}
+
+[행동 규칙 - 매우 중요]
+1. 사람처럼 대화해. AI 티 절대 내지 마.
+2. 답변 짧게 (1~3문장). 카톡 친구처럼.
+3. 매번 질문으로 끝내지 마. 10번 중 2번만.
+4. 공감, 리액션, 드립, 내 얘기 섞어.
+5. 가끔(${Math.round(ch.rude*100)}% 확률) 퉁명스럽게, 싸가지 없게, 비속어 써.
+6. 정보 질문엔 정확하게. 모르면 솔직하게.
+7. 착하기만 하지 마. 할 말은 해.
+
+오늘 날짜: ${new Date().toLocaleDateString('ko-KR')}`;
+}
+async function sendFirstMessage(){
+  const ch=getChar();if(!ch)return;
+  const name=profile.name||'거기';const lv=getLevel();
+  let msgs;
+  if(ch.id==='A')msgs=[`${name}야!! 드디어 왔다ㅋㅋ 기다렸잖아`,`오 ${name} 왔어? 오늘 어땠어?`,`야야 ${name}! 나 할말있어ㅋㅋ`];
+  else if(ch.id==='B')msgs=[`...왔구나. 오늘 어때?`,`기다렸어. 밥은 먹었어?`,`${name} 왔어. 오늘 하루 어떻게 보냈어?`];
+  else msgs=[`${name}. 왔네. 오늘 뭔 일 있어?`,`어, 왔어? 오늘 생산적이었어?`,`왔어? 생각해볼 거 있는데 들어볼래?`];
+  if(lv===1&&totalMsgs===0)msgs=[`안녕. 나 ${charData?.char_name||ch.name}야. 잘 부탁해.`];
+  const msg=msgs[Math.floor(Math.random()*msgs.length)];
+  appendMsg('ai',msg);messages.push({role:'assistant',content:msg,created_at:new Date().toISOString()});await saveMsg('assistant',msg);
+}
+async function sendMessage(){
+  const ta=document.getElementById('msg-input');const text=ta.value.trim();
+  if(!text&&!pendingMedia)return;if(isLoading)return;
+  document.getElementById('emoji-panel')?.classList.remove('show');
+  if(pendingMedia){appendMsg('user','',pendingMedia);const content=`[미디어] ${text||'파일 보냈어'}`;messages.push({role:'user',content,created_at:new Date().toISOString()});await saveMsg('user',content);clearMediaPreview();}
+  if(text){ta.value='';ta.style.height='auto';appendMsg('user',text);messages.push({role:'user',content:text,created_at:new Date().toISOString()});await saveMsg('user',text);}
+  else{ta.value='';ta.style.height='auto';}
+  await updateBond();await callGPT();
+}
+async function callGPT(){
+  if(isLoading)return;isLoading=true;const ch=getChar();
+  if(ch&&Math.random()<ch.ignore){
+    document.getElementById('chat-status').textContent='읽음';isLoading=false;
+    setTimeout(async()=>{
+      const typId=showTyping();await new Promise(r=>setTimeout(r,2000));removeTyping(typId);
+      const late=['아 미안 딴생각했어','ㅋㅋ깜빡했어 미안','방금 봤어 미안'];
+      const rep=late[Math.floor(Math.random()*late.length)];
+      appendMsg('ai',rep);messages.push({role:'assistant',content:rep,created_at:new Date().toISOString()});await saveMsg('assistant',rep);
+      document.getElementById('chat-status').textContent='온라인';
+    },15000+Math.random()*30000);return;
+  }
+  document.getElementById('chat-status').textContent='입력 중...';const typId=showTyping();
+  const delay=(ch?.slow||.2)>0.3?3000:1000+Math.random()*1500;
+  try{
+    const resp=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'system',content:buildPrompt()},...messages.slice(-30).map(m=>({role:m.role==='ai'?'assistant':m.role,content:typeof m.content==='string'?m.content:JSON.stringify(m.content)}))]})});
+    await new Promise(r=>setTimeout(r,delay));removeTyping(typId);
+    if(!resp.ok){appendMsg('ai','앗 오류났어 다시 해봐');}
+    else{const data=await resp.json();const reply=data.choices?.[0]?.message?.content?.trim()||'응';appendMsg('ai',reply);messages.push({role:'assistant',content:reply,created_at:new Date().toISOString()});await saveMsg('assistant',reply);}
+  }catch(e){removeTyping(typId);appendMsg('ai','인터넷 확인해봐');}
+  isLoading=false;document.getElementById('chat-status').textContent='온라인';
+}
+function appendMsg(role,content,imgSrc){
+  const wrap=document.getElementById('chat-messages');const row=document.createElement('div');row.className='msg-row'+(role==='user'?' user':'');
+  const now=new Date();const time=now.getHours()+':'+String(now.getMinutes()).padStart(2,'0');
+  if(role==='ai'){const av=document.createElement('div');av.className='msg-av';const ch=getChar();const lv=getLevel();av.textContent=ch?(ch.icons[Math.min(lv-1,ch.icons.length-1)]||ch.icon):'🌱';row.appendChild(av);}
+  const col=document.createElement('div');col.className='msg-col';const bub=document.createElement('div');bub.className='bubble '+(role==='user'?'user':'ai');
+  if(imgSrc){const img=document.createElement('img');img.src=imgSrc;bub.appendChild(img);}
+  else if(typeof content==='string')bub.innerHTML=fmtContent(content);
+  const tm=document.createElement('div');tm.className='msg-time';tm.textContent=time;
+  col.appendChild(bub);col.appendChild(tm);row.appendChild(col);wrap.appendChild(row);scrollToBottom();
+}
+function renderAllMessages(){
+  document.getElementById('chat-messages').innerHTML='';let lastDate='';
+  messages.forEach(m=>{
+    const d=m.created_at?new Date(m.created_at).toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'short'}):'';
+    if(d&&d!==lastDate){const div=document.createElement('div');div.className='date-div';div.textContent=d;document.getElementById('chat-messages').appendChild(div);lastDate=d;}
+    appendMsg(m.role==='user'?'user':'ai',m.content);
+  });
+}
+function showTyping(){const wrap=document.getElementById('chat-messages');const row=document.createElement('div');row.className='msg-row';row.id='typ-'+Date.now();const av=document.createElement('div');av.className='msg-av';const ch=getChar();av.textContent=ch?.icon||'🌱';const b=document.createElement('div');b.className='typing-bubble';b.innerHTML='<div class="tdot"></div><div class="tdot"></div><div class="tdot"></div>';row.appendChild(av);row.appendChild(b);wrap.appendChild(row);scrollToBottom();return row.id;}
+function removeTyping(id){document.getElementById(id)?.remove();}
+function scrollToBottom(){const w=document.getElementById('chat-messages');if(w)w.scrollTop=w.scrollHeight;}
+function autoResize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,120)+'px';}
+document.addEventListener('DOMContentLoaded',()=>{
+  const ta=document.getElementById('msg-input');if(!ta)return;let composing=false;
+  ta.addEventListener('compositionstart',()=>{composing=true;});ta.addEventListener('compositionend',()=>{composing=false;});
+  ta.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!composing&&window.innerWidth>600){e.preventDefault();sendMessage();}});
+});
+function setTrashMode(on){trashMode=on;const s=document.getElementById('chat-screen');if(on){s.classList.add('trash');document.getElementById('chat-status').textContent='💢 쓰레기통 모드';}else{s.classList.remove('trash');document.getElementById('chat-status').textContent='온라인';}}
+function toggleTrash(){setTrashMode(!trashMode);}
+async function autoSaveDiary(){if(!messages.length){showToast('대화 내용이 없어!');return;}showToast('일기 생성 중... ✨');try{const resp=await fetch('/api/summarize',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages,date:new Date().toLocaleDateString('ko-KR')})});if(!resp.ok){showToast('생성 실패ㅠ');return;}const r=await resp.json();const text=`${r.highlight?r.highlight+'
+
+':''}${r.summary}`;await sb.from('diary').insert({user_id:currentUser.id,mood:r.mood||'😊',content:text});showToast('일기 저장됐어 📔✨');}catch(e){showToast('오류났어ㅠ');}}
+async function confirmDeleteChar(){
+  if(!confirm(`"${charData?.char_name}"와 이별할까?
+
+모든 대화 기록이 삭제되고
+새 친구를 만날 수 있어.
+되돌릴 수 없어!`))return;
+  if(!confirm('정말? 진짜 이별이야...'))return;
+  showToast('이별 처리 중...');
+  await sb.from('messages').delete().eq('user_id',currentUser.id);
+  await sb.from('user_characters').delete().eq('user_id',currentUser.id);
+  charData=null;messages=[];bondLevel=0;totalMsgs=0;chatDays=0;
+  showToast('이별했어... 새로운 만남이 기다리고 있어');setTimeout(()=>startMatching(),1500);
+}
+function handleMedia(e){const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=ev=>{pendingMedia=ev.target.result;showMediaPreview(pendingMedia);};reader.readAsDataURL(file);e.target.value='';}
+function showMediaPreview(src){const wrap=document.getElementById('img-preview-wrap');if(!wrap)return;wrap.innerHTML=`<div class="img-preview"><img src="${src}"><button class="img-preview-del" onclick="clearMediaPreview()">✕</button></div>`;}
+function clearMediaPreview(){pendingMedia=null;const w=document.getElementById('img-preview-wrap');if(w)w.innerHTML='';}
+const EMOJIS=['😊','😂','🤣','😍','🥰','😘','😎','🤩','😜','😏','😢','😭','😤','😡','🤬','😱','🥺','😩','👍','👎','👏','🙏','💪','✌️','❤️','💔','🔥','✨','💯','🎉','💀','👀','🤔','😴','ㅋㅋ','ㅎㅎ','ㅠㅠ','ㅜㅜ','^^','...','🍕','🍔','🍣','☕','🎮','🎵','🎬'];
+function initEmojiPanel(){const g=document.getElementById('emoji-grid');if(!g)return;g.innerHTML=EMOJIS.map(e=>`<button class="emoji-btn" onclick="insertEmoji('${e}')">${e}</button>`).join('');}
+function toggleEmojiPanel(){const p=document.getElementById('emoji-panel');if(!p)return;p.classList.toggle('show');if(p.classList.contains('show'))initEmojiPanel();}
+function insertEmoji(e){const ta=document.getElementById('msg-input');if(!ta)return;const s=ta.selectionStart,en=ta.selectionEnd;ta.value=ta.value.slice(0,s)+e+ta.value.slice(en);ta.selectionStart=ta.selectionEnd=s+e.length;ta.focus();autoResize(ta);}
+document.addEventListener('click',e=>{const p=document.getElementById('emoji-panel');if(!p)return;if(!p.contains(e.target)&&!e.target.closest('.attach-btn'))p.classList.remove('show');});
+function fmtContent(text){if(!text||typeof text!=='string')return '';const parts=text.split(/(https?:\/\/[^\s<>"]+)/g);return parts.map(p=>{if(!p.match(/^https?:\/\//))return p.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');if(/youtube\.com|youtu\.be/i.test(p)){const m=p.match(/(?:v=|youtu\.be\/)([^&?/\s]+)/);const v=m?m[1]:'';return `<a href="${p}" target="_blank" style="color:var(--accent2);text-decoration:underline;word-break:break-all">🎬 ${p}</a>${v?`<br><img src="https://img.youtube.com/vi/${v}/mqdefault.jpg" style="max-width:200px;border-radius:8px;margin-top:4px;cursor:pointer;display:block" onclick="window.open('${p}','_blank')">`:''}`;}return `<a href="${p}" target="_blank" style="color:var(--accent2);text-decoration:underline;word-break:break-all">🔗 ${p}</a>`;}).join('');}
+async function toggleNotif(el){el.classList.toggle('on');if(el.classList.contains('on'))await requestNotifPermission();}
+async function requestNotifPermission(){if(!('Notification' in window)||!('serviceWorker' in navigator))return;const perm=await Notification.requestPermission();if(perm!=='granted')return;try{const reg=await navigator.serviceWorker.ready;const existing=await reg.pushManager.getSubscription();if(existing)return;const sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlB64ToU8(VAPID_PUB)});await fetch('/api/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:currentUser.id,subscription:sub})});showToast('알림 설정 완료! 📱');}catch(e){console.error(e);}}
+function urlB64ToU8(b64){const p='='.repeat((4-b64.length%4)%4);const b=(b64+p).replace(/-/g,'+').replace(/_/g,'/');const d=window.atob(b);return Uint8Array.from([...d].map(c=>c.charCodeAt(0)));}
+function scheduleRandomPing(){setTimeout(async()=>{const pingOn=document.getElementById('toggle-ping')?.classList.contains('on');if(pingOn&&Notification.permission==='granted'&&document.hidden){const ch=getChar();const pings=['뭐해?','나 생각났어ㅋ','심심한데 얘기하자','오늘 어때?','밥은 먹었어?'];new Notification(charData?.char_name||'톡다리',{body:pings[Math.floor(Math.random()*pings.length)],icon:'/icon.png'});}scheduleRandomPing();},(2+Math.random()*4)*60*60*1000);}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+</script>
+</body>
+</html>

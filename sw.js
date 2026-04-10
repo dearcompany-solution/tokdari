@@ -18,8 +18,8 @@ self.addEventListener('push', e => {
       body: data.body,
       icon: '/icon.png',
       badge: '/icon.png',
-      vibrate: data.vibrate ? [200, 100, 200] : [],
-      silent: !data.sound,
+      vibrate: [200, 100, 200, 100, 200],
+      silent: false,
       data: { url: self.location.origin }
     })
   );

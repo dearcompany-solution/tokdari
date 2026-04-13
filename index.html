@@ -624,10 +624,12 @@ ${charSpecific}
 나쁜답: "배가 고프시군요! 뭔가 드실 것을 찾고 계신가요?"
 좋은답: "나도" 또는 "그럼 먹어" 또는 "아 진짜? 뭐 먹었는데"
 
-[링크 전달 규칙]
-- 검색 결과에 링크 있으면 답변에 링크 그대로 포함해서 전달해
-- 링크 형식: https://... 그대로 붙여넣기
-- 링크 설명할 때: "이거 봐봐 https://..." 또는 "여기 참고해 https://..."`;
+[답변 형식 규칙]
+- 검색 결과 링크는 그대로 전달. URL 변형 금지
+- 표로 정리 요청하면 마크다운 표 형식(|컬럼|컬럼|)으로 답해
+- 이미지 요청하면 검색 결과 이미지 URL 그대로 전달
+- 긴 정보는 **굵게** 강조하면서 핵심만 정리해서 답해
+- 헌법/법령/공식 정보는 정확하게 인용해서 답해
 }
 async function sendFirstMessage(){
   const ch=getChar();if(!ch)return;
@@ -710,7 +712,69 @@ function initEmojiPanel(){const g=document.getElementById('emoji-grid');if(!g)re
 function toggleEmojiPanel(){const p=document.getElementById('emoji-panel');if(!p)return;p.classList.toggle('show');if(p.classList.contains('show'))initEmojiPanel();}
 function insertEmoji(e){const ta=document.getElementById('msg-input');if(!ta)return;const s=ta.selectionStart,en=ta.selectionEnd;ta.value=ta.value.slice(0,s)+e+ta.value.slice(en);ta.selectionStart=ta.selectionEnd=s+e.length;ta.focus();autoResize(ta);}
 document.addEventListener('click',e=>{const p=document.getElementById('emoji-panel');if(!p)return;if(!p.contains(e.target)&&!e.target.closest('.attach-btn'))p.classList.remove('show');});
-function fmtContent(text){if(!text||typeof text!=='string')return '';const parts=text.split(/(https?:\/\/[^\s<>"]+)/g);return parts.map(p=>{if(!p.match(/^https?:\/\//))return p.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');if(/youtube\.com|youtu\.be/i.test(p)){const m=p.match(/(?:v=|youtu\.be\/)([^&?/\s]+)/);const v=m?m[1]:'';return `<a href="${p}" target="_blank" style="color:var(--accent2);text-decoration:underline;word-break:break-all">🎬 ${p}</a>${v?`<br><img src="https://img.youtube.com/vi/${v}/mqdefault.jpg" style="max-width:200px;border-radius:8px;margin-top:4px;cursor:pointer;display:block" onclick="window.open('${p}','_blank')">`:''}`;}return `<a href="${p}" target="_blank" style="color:var(--accent2);text-decoration:underline;word-break:break-all">🔗 ${p}</a>`;}).join('');}
+function fmtContent(text){
+  if(!text||typeof text!=='string')return '';
+
+  // 1. 마크다운 표 감지 → HTML 테이블 변환
+  if(text.includes('|')){
+    const lines=text.split('\n');
+    const tableLines=lines.filter(l=>l.trim().startsWith('|'));
+    if(tableLines.length>=2){
+      let html='';let inTable=false;
+      const processedLines=lines.map(line=>{
+        if(!line.trim().startsWith('|'))return inTable?(inTable=false,'</table>'):(inTable=false,escFmt(line));
+        if(line.match(/^\|[-| ]+\|$/))return '';
+        if(!inTable){inTable=true;html='<table style="border-collapse:collapse;width:100%;margin:6px 0;font-size:.82rem">';}
+        const cells=line.split('|').filter((_,i,a)=>i>0&&i<a.length-1);
+        return cells.map(c=>`<td style="border:1px solid var(--border);padding:5px 8px;color:var(--text)">${escFmt(c.trim())}</td>`).join('');
+      });
+      // 표 있으면 테이블로 렌더링
+      let result='<table style="border-collapse:collapse;width:100%;margin:6px 0;font-size:.82rem">';
+      let isHeader=true;
+      lines.forEach(line=>{
+        if(!line.trim().startsWith('|'))return;
+        if(line.match(/^\|[\s\-|]+\|$/))return;
+        const cells=line.split('|').filter((_,i,a)=>i>0&&i<a.length-1);
+        const tag=isHeader?'th':'td';
+        const style=isHeader
+          ?'border:1px solid var(--border);padding:6px 10px;background:var(--bg3);color:var(--accent2);font-weight:700'
+          :'border:1px solid var(--border);padding:5px 8px;color:var(--text)';
+        result+=`<tr>${cells.map(c=>`<${tag} style="${style}">${escFmt(c.trim())}</${tag}>`).join('')}</tr>`;
+        isHeader=false;
+      });
+      result+='</table>';
+      // 표 외 나머지 텍스트 처리
+      const nonTableText=lines.filter(l=>!l.trim().startsWith('|')).join('\n').trim();
+      return (nonTableText?fmtPlain(nonTableText)+'<br>':'')+result;
+    }
+  }
+
+  return fmtPlain(text);
+}
+
+function escFmt(t){return(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function fmtPlain(text){
+  if(!text||typeof text!=='string')return '';
+  // 볼드 **text** 처리
+  text=text.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+  // URL 처리
+  const parts=text.split(/(https?:\/\/[^\s<>"]+)/g);
+  return parts.map(p=>{
+    if(!p.match(/^https?:\/\//))
+      return p.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+    if(/youtube\.com|youtu\.be/i.test(p)){
+      const m=p.match(/(?:v=|youtu\.be\/)([^&?/\s]+)/);
+      const v=m?m[1]:'';
+      return `<a href="${p}" target="_blank" style="color:var(--accent2);text-decoration:underline;word-break:break-all">🎬 ${p}</a>${v?`<br><img src="https://img.youtube.com/vi/${v}/mqdefault.jpg" style="max-width:200px;border-radius:8px;margin-top:4px;cursor:pointer;display:block" onclick="window.open('${p}','_blank')">` : ''}`;
+    }
+    // 이미지 URL 감지 (.jpg .png .gif .webp)
+    if(/\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(p)){
+      return `<img src="${p}" style="max-width:100%;border-radius:10px;margin-top:4px;display:block;cursor:pointer" onclick="window.open('${p}','_blank')" onerror="this.style.display='none'"><br><a href="${p}" target="_blank" style="color:var(--accent2);text-decoration:underline;font-size:.8rem">🖼 이미지 열기</a>`;
+    }
+    return `<a href="${p}" target="_blank" style="color:var(--accent2);text-decoration:underline;word-break:break-all">🔗 ${p}</a>`;
+  }).join('');
+}}
 async function toggleNotif(el){
   el.classList.toggle('on');
   if(el.classList.contains('on')){

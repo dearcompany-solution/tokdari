@@ -674,14 +674,50 @@ async function sendFirstMessage(){
   const msg=msgs[Math.floor(Math.random()*msgs.length)];
   appendMsg('ai',msg);messages.push({role:'assistant',content:msg,created_at:new Date().toISOString()});await saveMsg('assistant',msg);
 }
+let replyTimer = null;
+let pendingUserMsgs = [];
+
 async function sendMessage(){
-  const ta=document.getElementById('msg-input');const text=ta.value.trim();
-  if(!text&&!pendingMedia)return;if(isLoading)return;
+  const ta=document.getElementById('msg-input');
+  const text=ta.value.trim();
+  if(!text&&!pendingMedia)return;
+
   document.getElementById('emoji-panel')?.classList.remove('show');
-  if(pendingMedia){appendMsg('user','',pendingMedia);const content=`[미디어] ${text||'파일 보냈어'}`;messages.push({role:'user',content,created_at:new Date().toISOString()});await saveMsg('user',content);clearMediaPreview();}
-  if(text){ta.value='';ta.style.height='auto';appendMsg('user',text);messages.push({role:'user',content:text,created_at:new Date().toISOString()});await saveMsg('user',text);}
-  else{ta.value='';ta.style.height='auto';}
-  await updateBond();await callGPT();
+
+  if(pendingMedia){
+    appendMsg('user','',pendingMedia);
+    const content=`[미디어] ${text||'파일 보냈어'}`;
+    pendingUserMsgs.push(content);
+    messages.push({role:'user',content,created_at:new Date().toISOString()});
+    await saveMsg('user',content);
+    clearMediaPreview();
+  }
+
+  if(text){
+    ta.value='';ta.style.height='auto';
+    appendMsg('user',text);
+    pendingUserMsgs.push(text);
+    messages.push({role:'user',content:text,created_at:new Date().toISOString()});
+    await saveMsg('user',text);
+  } else {
+    ta.value='';ta.style.height='auto';
+  }
+
+  await updateBond();
+
+  // 기존 타이머 초기화 (연속 입력 감지)
+  if(replyTimer) clearTimeout(replyTimer);
+
+  // 메시지 길이에 따라 대기 시간 결정
+  const totalLength = pendingUserMsgs.join('').length;
+  const waitTime = totalLength > 50 ? 4000 : totalLength > 20 ? 2500 : 1500;
+
+  // 입력이 멈추면 대기 후 답장
+  replyTimer = setTimeout(async()=>{
+    if(isLoading)return;
+    pendingUserMsgs = [];
+    await callGPT();
+  }, waitTime);
 }
 async function callGPT(){
   if(isLoading)return;isLoading=true;const ch=getChar();
@@ -696,7 +732,10 @@ async function callGPT(){
     },15000+Math.random()*30000);return;
   }
   document.getElementById('chat-status').textContent='입력 중...';const typId=showTyping();
-  const delay=(ch?.slow||.2)>0.3?3000:1000+Math.random()*1500;
+  // 메시지 길이 기반 읽는 시간 계산
+const lastMsg=messages.filter(m=>m.role==='user').slice(-3).map(m=>m.content).join('');
+const readTime=Math.min(Math.max(lastMsg.length*80, 1500), 8000);
+const delay=readTime+Math.random()*2000;
   try{
     const resp=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'system',content:buildPrompt()},...messages.slice(-30).map(m=>({role:m.role==='ai'?'assistant':m.role,content:typeof m.content==='string'?m.content:JSON.stringify(m.content)}))]})});
     await new Promise(r=>setTimeout(r,delay));removeTyping(typId);
@@ -732,7 +771,13 @@ function autoResize(el){el.style.height='auto';el.style.height=Math.min(el.scrol
 document.addEventListener('DOMContentLoaded',()=>{
   const ta=document.getElementById('msg-input');if(!ta)return;let composing=false;
   ta.addEventListener('compositionstart',()=>{composing=true;});ta.addEventListener('compositionend',()=>{composing=false;});
-  ta.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!composing&&window.innerWidth>600){e.preventDefault();sendMessage();}});
+  ta.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&!e.shiftKey&&!composing){
+    e.preventDefault();
+    sendMessage();
+  }
+  // Shift+Enter는 줄바꿈
+});
 });
 function setTrashMode(on){trashMode=on;const s=document.getElementById('chat-screen');if(on){s.classList.add('trash');document.getElementById('chat-status').textContent='💢 쓰레기통 모드';}else{s.classList.remove('trash');document.getElementById('chat-status').textContent='온라인';}}
 function toggleTrash(){setTrashMode(!trashMode);}

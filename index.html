@@ -566,14 +566,40 @@ function switchTab(tab){
   if(map[tab])document.getElementById(map[tab]).classList.add('active');
   if(tab==='home')updateCharDisplay();
 }
-function openChat(){document.getElementById('chat-screen').classList.add('active');if(messages.length===0)sendFirstMessage();else setTimeout(scrollToBottom,100);}
+async function openChat(){
+  document.getElementById('chat-screen').classList.add('active');
+  await loadMessages();
+  if(messages.length===0) sendFirstMessage();
+  else setTimeout(scrollToBottom,100);
+}
 function goBackToHome(){document.getElementById('chat-screen').classList.remove('active');setTrashMode(false);updateCharDisplay();}
 async function loadMessages(){
   if(!currentUser)return;
-  const{data}=await sb.from('messages').select('*').eq('user_id',currentUser.id).order('created_at',{ascending:true}).limit(100);
-  if(data&&data.length>0){messages=data.map(m=>({role:m.role,content:m.content,created_at:m.created_at}));renderAllMessages();setTimeout(scrollToBottom,100);}
+  try{
+    const{data,error}=await sb.from('messages').select('*')
+      .eq('user_id',currentUser.id)
+      .order('created_at',{ascending:true})
+      .limit(200);
+    if(error){console.error('loadMessages 오류:',error.message);return;}
+    if(data&&data.length>0){
+      messages=data.map(m=>({role:m.role,content:m.content,created_at:m.created_at}));
+      renderAllMessages();
+      setTimeout(scrollToBottom,100);
+    }
+  }catch(e){console.error('loadMessages catch:',e);}
 }
-async function saveMsg(role,content){if(!currentUser)return;await sb.from('messages').insert({user_id:currentUser.id,role,content,created_at:new Date().toISOString()});}
+async function saveMsg(role,content){
+  if(!currentUser)return;
+  try{
+    const{error}=await sb.from('messages').insert({
+      user_id:currentUser.id,
+      role,
+      content,
+      created_at:new Date().toISOString()
+    });
+    if(error)console.error('저장오류:',error.message);
+  }catch(e){console.error('saveMsg 오류:',e);}
+}
 let currentWeather = null;
     function buildPrompt(){
   const ch=getChar();if(!ch)return '';

@@ -865,46 +865,45 @@ async function toggleNotif(el){
   }
 }
 async function requestNotifPermission(){
-  if(!('Notification' in window)){showToast('이 브라우저는 알림을 지원하지 않아');return;}
-  if(!('serviceWorker' in navigator)){showToast('서비스워커 미지원 브라우저야');return;}
+  if(!('Notification' in window)||!('serviceWorker' in navigator))return;
 
-  const perm = await Notification.requestPermission();
-  if(perm === 'denied'){showToast('알림 권한이 차단됐어. 브라우저 설정에서 허용해줘!');return;}
-  if(perm !== 'granted'){showToast('알림 권한이 필요해!');return;}
+  // 이미 허용된 경우 조용히 구독만 확인
+  if(Notification.permission==='granted'){
+    try{
+      const reg=await navigator.serviceWorker.ready;
+      const existing=await reg.pushManager.getSubscription();
+      if(!existing){
+        // 구독 없으면 새로 구독
+        const sub=await reg.pushManager.subscribe({
+          userVisibleOnly:true,
+          applicationServerKey:urlB64ToU8(VAPID_PUB)
+        });
+        await fetch('/api/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({userId:currentUser.id,subscription:sub})});
+      }
+    }catch(e){console.error(e);}
+    return;
+  }
+
+  // 거부된 경우 토스트 없이 조용히 종료
+  if(Notification.permission==='denied')return;
+
+  // default(미결정) 상태일 때만 권한 요청
+  const perm=await Notification.requestPermission();
+  if(perm!=='granted')return;
 
   try{
-    const reg = await navigator.serviceWorker.ready;
-    // 기존 구독 있으면 해제 후 재구독
-    const existing = await reg.pushManager.getSubscription();
-    if(existing) await existing.unsubscribe();
-
-    const sub = await reg.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlB64ToU8(VAPID_PUB)
+    const reg=await navigator.serviceWorker.ready;
+    const existing=await reg.pushManager.getSubscription();
+    if(existing)return;
+    const sub=await reg.pushManager.subscribe({
+      userVisibleOnly:true,
+      applicationServerKey:urlB64ToU8(VAPID_PUB)
     });
-
-    const r = await fetch('/api/subscribe',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({userId:currentUser.id, subscription:sub})
-    });
-
-    if(r.ok){
-      showToast('알림 설정 완료! 이제 선톡도 받을 수 있어 📱');
-      // 즉시 테스트 알림
-      setTimeout(()=>{
-        new Notification(charData?.char_name||'톡다리',{
-          body:'알림 설정됐어! 이제 내가 먼저 톡 할게 😊',
-          icon:'/icon.png'
-        });
-      }, 1000);
-    } else {
-      showToast('알림 등록 실패 ㅠ 다시 시도해봐');
-    }
-  }catch(e){
-    console.error(e);
-    showToast('알림 설정 중 오류났어: '+e.message);
-  }
+    const r=await fetch('/api/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({userId:currentUser.id,subscription:sub})});
+    if(r.ok)showToast('알림 설정 완료! 📱');
+  }catch(e){console.error(e);}
 }
 function urlB64ToU8(b64){const p='='.repeat((4-b64.length%4)%4);const b=(b64+p).replace(/-/g,'+').replace(/_/g,'/');const d=window.atob(b);return Uint8Array.from([...d].map(c=>c.charCodeAt(0)));}
 function scheduleRandomPing(){

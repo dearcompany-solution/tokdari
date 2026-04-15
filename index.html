@@ -732,10 +732,10 @@ async function callGPT(){
     },15000+Math.random()*30000);return;
   }
   document.getElementById('chat-status').textContent='읽음';
-const delay=...
+const lastMsg=messages.filter(m=>m.role==='user').slice(-3).map(m=>m.content).join('');
+const delay=Math.min(Math.max(lastMsg.length*80,1500),8000)+Math.random()*2000;
 try{
-  const resp=await fetch('/api/chat',...
-  // GPT 응답 받은 후 타이핑 표시
+  const resp=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'system',content:buildPrompt()},...messages.slice(-30).map(m=>({role:m.role==='ai'?'assistant':m.role,content:typeof m.content==='string'?m.content:JSON.stringify(m.content)}))]})});
   await new Promise(r=>setTimeout(r,delay));
   document.getElementById('chat-status').textContent='입력 중...';
   const typId=showTyping();

@@ -200,18 +200,16 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Noto San
   <div class="auth-switch" onclick="showLogin()">로그인으로 <span>돌아가기</span></div>
 </div>
 <div id="matching">
-  <div class="match-progress" id="match-progress"></div>
-  <div class="match-question" id="match-q" style="display:none"></div>
-  <div class="match-scene" id="match-scene" style="display:none"></div>
-  <div class="match-choices" id="match-choices"></div>
-  <div class="match-result" id="match-result" style="display:none">
-    <div class="match-char-big" id="result-char"></div>
-    <div class="match-char-type" id="result-type"></div>
-    <div class="match-char-name" id="result-name"></div>
-    <div style="font-size:.85rem;color:var(--text3)">가 운명처럼 찾아왔어</div>
-    <div class="match-char-desc" id="result-desc"></div>
-    <button class="auth-btn" style="max-width:300px;width:100%;margin-top:.5rem" onclick="startWithCharacter()">만나러 가기 →</button>
+  <div style="font-size:6rem;animation:pulse 2s infinite">🥚</div>
+  <div class="auth-title">톡다리 친구 만들기</div>
+  <div class="auth-sub">나만의 친구 "다리"를 만들어봐!<br>대화할수록 함께 성장해</div>
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:1.4rem;max-width:320px;width:100%;text-align:center">
+    <div style="font-size:2rem;margin-bottom:.5rem">🐧</div>
+    <div style="font-weight:700;font-size:1.1rem;margin-bottom:.4rem">다리</div>
+    <div style="font-size:.78rem;color:var(--accent2);margin-bottom:.8rem">솔직하고 현실적인 친구</div>
+    <div style="font-size:.83rem;color:var(--text2);line-height:1.7">솔직하고 현실적이야. 할 말은 하고, 들을 땐 제대로 들어. 가끔 퉁명스럽지만 속으로는 신경 쓰고 있어.</div>
   </div>
+  <button class="auth-btn" style="max-width:320px;width:100%" onclick="startWithCharacter()">친구 만들기 →</button>
 </div>
 <div id="app">
   <div id="chat-screen">
@@ -416,7 +414,11 @@ function applyProfile(){
   if(el('settings-user-info'))el('settings-user-info').textContent=`${profile.name||''} (${profile.email||''})`;
   updateCharDisplay();
 }
-function startMatching(){matchAnswers=[];matchStep=0;matchedChar=null;document.getElementById('app').classList.remove('show');document.getElementById('matching').classList.add('show');document.getElementById('match-result').style.display='none';renderMatchQ();}
+function startMatching(){
+  matchedChar=CHARS['A'];
+  document.getElementById('app').classList.remove('show');
+  document.getElementById('matching').classList.add('show');
+}
 function renderMatchQ(){
   const q=MATCH_Qs[matchStep];
   const dots=document.getElementById('match-progress');
@@ -444,10 +446,18 @@ function showMatchResult(){
   document.getElementById('match-result').style.display='flex';
 }
 async function startWithCharacter(){
-  if(!matchedChar)return;
-  const{error}=await sb.from('user_characters').insert({user_id:currentUser.id,char_id:matchedChar.id,char_name:matchedChar.name,bond:0,total_msgs:0,chat_days:0,personality_data:{},created_at:new Date().toISOString()});
+  if(!matchedChar)matchedChar=CHARS['A'];
+  showToast('친구 만드는 중...');
+  const{error}=await sb.from('user_characters').insert({
+    user_id:currentUser.id,
+    char_id:'A',
+    char_name:'다리',
+    bond:0,total_msgs:0,chat_days:0,
+    personality_data:{},
+    created_at:new Date().toISOString()
+  });
   if(error){showToast('저장 실패 ㅠ '+error.message);return;}
-  charData={...matchedChar,bond:0,total_msgs:0,chat_days:0};bondLevel=0;totalMsgs=0;chatDays=0;
+  charData={...CHARS['A'],bond:0,total_msgs:0,chat_days:0};
   document.getElementById('matching').classList.remove('show');
   const appEl=document.getElementById('app');appEl.classList.add('show');appEl.style.display='flex';
   applyProfile();switchTab('home');setTimeout(()=>openChat(),600);

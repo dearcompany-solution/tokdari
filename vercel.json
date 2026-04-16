@@ -4,5 +4,8 @@
       "path": "/api/cron-ping",
       "schedule": "0 10 * * *"
     }
+  ],
+  "rewrites": [
+    {"source":"/images/:path*","destination":"/public/images/:path*"}
   ]
 }

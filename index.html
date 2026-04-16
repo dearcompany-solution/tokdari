@@ -1575,19 +1575,15 @@ async function autoDetectSchedule(text){
   function showTerms(){document.getElementById('terms-modal').style.display='block';}
 function showPrivacy(){document.getElementById('privacy-modal').style.display='block';}
 function closeModal(id){document.getElementById(id).style.display='none';}
-  async function checkConsent(){
-  // 로컬에 있으면 바로 스킵
+ async function checkConsent(){
   if(localStorage.getItem('td_consent')==='1')return;
-  // DB에서 동의 여부 확인
   try{
     const{data}=await sb.from('profiles').select('agreed_at').eq('id',currentUser.id).maybeSingle();
     if(data?.agreed_at){
-      // DB에 동의 기록 있으면 로컬에도 저장하고 스킵
       localStorage.setItem('td_consent','1');
       return;
     }
   }catch(e){console.error(e);}
-  // 동의 안 했으면 모달 표시
   document.getElementById('consent-modal').style.display='flex';
 }
 async function confirmConsent(){
@@ -1596,7 +1592,6 @@ async function confirmConsent(){
   const age=document.getElementById('consent-age').checked;
   const errEl=document.getElementById('consent-error');
   if(!terms||!privacy||!age){errEl.textContent='필수 항목 모두 체크해줘!';return;}
-  // DB에 동의 시각 저장
   try{
     await sb.from('profiles').update({agreed_at:new Date().toISOString()}).eq('id',currentUser.id);
   }catch(e){console.error(e);}

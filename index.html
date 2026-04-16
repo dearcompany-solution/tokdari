@@ -464,7 +464,33 @@ const PENGUIN_LEVELS=[
   {lv:5,icon:'🐧💫',label:'다큰펭귄',desc:'이제 제법 친해졌네. 편하게 얘기해.'},
   {lv:6,icon:'🐧👑',label:'스타펭귄',desc:'진짜 특별한 사이가 됐어. 운명이었나봐!'}
 ];
+// 펭귄 이미지 배열 (GitHub raw URL로 교체해줘)
+const PENGUIN_IMGS=[
+  'images/penguin-wizard-red.png',      // 1. 빨간 마법사
+  'images/penguin-robot.png',           // 2. 로봇
+  'images/penguin-yellow.png',          // 3. 노란 펭귄
+  'images/penguin-angry.png',           // 4. 화난 펭귄
+  'images/penguin-wizard-blue.png',     // 5. 파란 마법사
+  'images/penguin-sunglasses.png',      // 6. 선글라스
+  'images/penguin-balloon.png',         // 7. 풍선 (흰 아기)
+  'images/penguin-sad.png',             // 8. 슬픈 펭귄
+  'images/penguin-burger.png',          // 9. 햄버거
+  'images/penguin-face.png',            // 10. 펭귄 얼굴
+  'images/penguin-face-cry.png',        // 11. 우는 얼굴
+  'images/penguin-face-smirk.png',      // 12. 능글맞은 얼굴
+  'images/penguin-happy.png',           // 13. 행복한 펭귄
+  'images/penguin-ship.png',            // 14. 배 탄 펭귄
+  'images/penguin-queen.png',           // 15. 왕관 펭귄
+  'images/penguin-rainbow.png',         // 16. 무지개 펭귄
+];
 
+function getTodayPenguinImg(){
+  // 날짜 기반으로 매일 바뀜 (같은 날은 항상 같은 이미지)
+  const today=new Date();
+  const seed=today.getFullYear()*10000+(today.getMonth()+1)*100+today.getDate();
+  const idx=seed%PENGUIN_IMGS.length;
+  return PENGUIN_IMGS[idx];
+}
 const CHARS={
   A:{
     id:'A', name:'다리', icon:'🐧',
@@ -724,7 +750,13 @@ function updateCharDisplay(){
   const name=charData?.char_name||ch.name;
   const el=id=>document.getElementById(id);
   const svgWrap=document.getElementById('char-svg-wrap');
-  if(svgWrap)svgWrap.innerHTML=getPenguinSVG(lv);
+  if(svgWrap){
+    const todayImg=getTodayPenguinImg();
+    svgWrap.innerHTML=`<div style="position:relative;width:140px;height:140px;display:flex;align-items:center;justify-content:center">
+      <img src="${todayImg}" style="width:130px;height:130px;object-fit:contain;filter:drop-shadow(0 4px 12px rgba(124,58,237,.4))" onerror="this.parentElement.innerHTML=getPenguinSVG(${lv})">
+      <div style="position:absolute;bottom:-8px;right:-4px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:2px 7px;font-size:.65rem;font-weight:700;color:var(--accent2)">Lv.${lv}</div>
+    </div>`;
+  }
   if(el('chat-char-icon'))el('chat-char-icon').textContent=ch.icons[Math.min(lv-1,ch.icons.length-1)]||'🐧';
   if(el('char-name-disp'))el('char-name-disp').textContent=name;
   if(el('char-type-disp'))el('char-type-disp').textContent=ch.type;
@@ -742,6 +774,27 @@ function updateCharDisplay(){
   if(stage){stage.className='char-stage';if(lv>=6)stage.classList.add('lv-glow-6');else if(lv>=5)stage.classList.add('lv-glow-5');else if(lv>=4)stage.classList.add('lv-glow-4');else if(lv>=3)stage.classList.add('lv-glow-3');else if(lv>=2)stage.classList.add('lv-glow-2');}
   const penguinMsg=PENGUIN_LEVELS[Math.min(lv-1,PENGUIN_LEVELS.length-1)];
   const todayMsgs=lv===1?['...🥚 (아직 알 속이야. 말을 걸면 깨어날지도?)']:lv===2?['삐약..! 🐣 조금만 더 이야기해줘!']:['대화하러 와줘서 기다리고 있었어!','오늘 어떤 하루였어?','보고싶었어 ㅋㅋ','야 밥은 먹었어?','오늘도 잘 부탁해'];
+  // 오늘의 펭귄 코멘트
+  const todayComments=[
+    '오늘은 마법사 모드야 🧙',
+    '오늘은 로봇 업그레이드 완료 🤖',
+    '오늘은 옐로우 데이 🐤',
+    '오늘은 좀 예민해... 😤',
+    '오늘은 마법 부릴 준비 됐어 ✨',
+    '오늘은 쿨가이 모드 😎',
+    '오늘은 기분 업! 🎈',
+    '오늘은 좀 울적해... 🥺',
+    '오늘은 배고파 🍔',
+    '그냥 평범한 하루야',
+    '오늘은 눈물이 날 것 같아 😢',
+    '오늘은 능글맞은 하루야 😏',
+    '오늘은 기분 최고야 😄',
+    '오늘은 항해 중 ⛵',
+    '오늘은 왕이야 👑',
+    '오늘은 무지개 기분이야 🌈',
+  ];
+  const seed2=new Date().getDate()%todayComments.length;
+  if(el('char-type-disp'))el('char-type-disp').textContent=todayComments[seed2];
   if(el('today-text'))el('today-text').textContent=todayMsgs[Math.floor(Math.random()*todayMsgs.length)];
   if(el('chat-btn-text'))el('chat-btn-text').textContent=messages.length>0?'계속 대화하기':'대화하기';
 }
@@ -976,7 +1029,12 @@ if(totalMsgs>0 && totalMsgs%10===0) autoSaveDiary();
 function appendMsg(role,content,imgSrc){
   const wrap=document.getElementById('chat-messages');const row=document.createElement('div');row.className='msg-row'+(role==='user'?' user':'');
   const now=new Date();const time=now.getHours()+':'+String(now.getMinutes()).padStart(2,'0');
-  if(role==='ai'){const av=document.createElement('div');av.className='msg-av';const ch=getChar();const lv=getLevel();av.textContent=ch?(ch.icons[Math.min(lv-1,ch.icons.length-1)]||ch.icon):'🌱';row.appendChild(av);}
+  if(role==='ai'){
+    const av=document.createElement('div');av.className='msg-av';
+    const todayImg=getTodayPenguinImg();
+    av.innerHTML=`<img src="${todayImg}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.parentElement.textContent='🐧'">`;
+    row.appendChild(av);
+  }
   const col=document.createElement('div');col.className='msg-col';const bub=document.createElement('div');bub.className='bubble '+(role==='user'?'user':'ai');
   if(imgSrc){const img=document.createElement('img');img.src=imgSrc;bub.appendChild(img);}
   else if(typeof content==='string')bub.innerHTML=fmtContent(content);

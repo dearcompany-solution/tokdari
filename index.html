@@ -188,6 +188,17 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Noto San
   <button class="auth-btn" onclick="doSignup()">가입하기 →</button>
   <div class="auth-switch" onclick="showLogin()">이미 계정이 있어? <span>로그인</span></div>
 </div>
+  <div class="auth-wrap" id="find-screen">
+  <div style="font-size:3rem">🔑</div>
+  <div class="auth-title">계정 찾기</div>
+  <div class="auth-sub">가입한 이메일로 비밀번호 재설정 링크를 보내줄게</div>
+  <div class="auth-box">
+    <div><div class="auth-label">이메일</div><input class="auth-input" id="find-email" type="email" placeholder="가입한 이메일 입력" autocomplete="email"></div>
+    <div class="auth-error" id="find-error"></div>
+  </div>
+  <button class="auth-btn" onclick="doFindAccount()">재설정 링크 보내기</button>
+  <div class="auth-switch" onclick="showLogin()">로그인으로 <span>돌아가기</span></div>
+</div>
 <div id="matching">
   <div class="match-progress" id="match-progress"></div>
   <div class="match-question" id="match-q" style="display:none"></div>
@@ -342,7 +353,22 @@ window.addEventListener('load',async()=>{
 });
 function hideSplash(){setTimeout(()=>{const s=document.getElementById('splash');if(s)s.style.display='none';},600);}
 function showLogin(){document.getElementById('login-screen').classList.add('show');document.getElementById('signup-screen').classList.remove('show');}
-function showSignup(){document.getElementById('signup-screen').classList.add('show');document.getElementById('login-screen').classList.remove('show');}
+function showFindAccount(){
+  document.getElementById('find-screen').classList.add('show');
+  document.getElementById('login-screen').classList.remove('show');
+  document.getElementById('signup-screen').classList.remove('show');
+}
+async function doFindAccount(){
+  const email=document.getElementById('find-email').value.trim();
+  const errEl=document.getElementById('find-error');
+  if(!email){errEl.textContent='이메일 입력해줘!';return;}
+  errEl.textContent='전송 중...';
+  const{error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:'https://tokdari.vercel.app'});
+  if(error){errEl.textContent='전송 실패ㅠ 이메일 다시 확인해봐';return;}
+  errEl.style.color='#22c55e';
+  errEl.textContent='전송됐어! 이메일 확인해줘 📧';
+}
+  function showSignup(){document.getElementById('signup-screen').classList.add('show');document.getElementById('login-screen').classList.remove('show');}
 async function doSignup(){
   const name=document.getElementById('su-name').value.trim();
   const email=document.getElementById('su-email').value.trim();

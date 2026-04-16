@@ -173,6 +173,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Noto San
   </div>
   <button class="auth-btn" onclick="doLogin()">로그인 →</button>
   <div class="auth-switch" onclick="showSignup()">계정이 없어? <span>회원가입</span></div>
+<div class="auth-switch" onclick="showFindAccount()">비밀번호를 잊었어? <span>찾기</span></div>
 </div>
 <div class="auth-wrap" id="signup-screen">
   <div style="font-size:3rem">🌱</div>
@@ -214,7 +215,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Noto San
         <button class="hbtn" onclick="toggleTrash()">💢</button>
       </div>
     </div>
-    <div id="chat-messages"></div>
+    <div id="chat-messages" ondragover="event.preventDefault()" ondrop="handleDrop(event)"></div>
     <div class="input-bar">
       <button class="attach-btn" onclick="document.getElementById('media-input').click()">📷</button>
       <input type="file" id="media-input" accept="image/*,video/*" style="display:none" onchange="handleMedia(event)">
@@ -287,7 +288,8 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Noto San
     <div class="tab-bar">
   <button class="tab-item active" id="tab-home" onclick="switchTab('home')"><span class="ti">🏠</span><span class="tl">홈</span></button>
   <button class="tab-item" id="tab-diary" onclick="switchTab('diary')"><span class="ti">📔</span><span class="tl">다이어리</span></button>
-  <button class="tab-item" id="tab-settings" onclick="switchTab('settings')"><span class="ti">⚙️</span><span class="tl">설정</span></button>
+<button class="tab-item" id="tab-calendar" onclick="switchTab('calendar')"><span class="ti">📅</span><span class="tl">캘린더</span></button>
+<button class="tab-item" id="tab-settings" onclick="switchTab('settings')"><span class="ti">⚙️</span><span class="tl">설정</span></button>
 </div>
   </div>
 </div>
@@ -309,9 +311,14 @@ const PENGUIN_LEVELS=[
 ];
 
 const CHARS={
-  A:{id:'A',name:'리아',icon:'🐧',type:'ENFP · 에너지 부스터',desc:'활발하고 유머러스해. 어떤 상황도 밝게 만들어주는 찐 에너지 메이커야. 가끔 오버하지만 그게 매력이야.',style:'에너지 넘치고 유머러스하게, 반말로',icons:['🥚','🐣','🐧','🐧✨','🐧💫','🐧👑'],rude:.3,ignore:.1,slow:.2},
-  B:{id:'B',name:'준',icon:'🐧',type:'ISFJ · 섬세한 수호자',desc:'조용하지만 깊어. 네 말을 끝까지 들어주고, 아무도 못 느끼는 걸 먼저 챙겨줘. 근데 가끔 직구 날려.',style:'다정하지만 직설적으로, 반말로',icons:['🥚','🐣','🐧','🐧✨','🐧💫','🐧👑'],rude:.15,ignore:.2,slow:.35},
-  C:{id:'C',name:'세진',icon:'🐧',type:'ENTP · 논리적 토론가',desc:'반박 좋아하고 논리적이야. 근데 그게 싫지 않아. 오히려 네 생각을 더 깊게 만들어줘. 가끔 싸가지 없음.',style:'직설적이고 논리적으로, 반말로. 가끔 반박해',icons:['🥚','🐣','🐧','🐧✨','🐧💫','🐧👑'],rude:.5,ignore:.15,slow:.15}
+  A:{
+    id:'A', name:'다리', icon:'🐧',
+    type:'친구',
+    desc:'솔직하고 현실적이야. 할 말은 하고, 들을 땐 제대로 들어. 가끔 퉁명스럽지만 신경은 쓰고 있어.',
+    style:'자연스러운 반말로, 짧고 솔직하게',
+    icons:['🥚','🐣','🐧','🐧✨','🐧💫','🐧👑'],
+    rude:.25, ignore:.1, slow:.2
+  }
 };
 const MATCH_Qs=[
   {scene:'📱 어느 날 갑자기 모르는 번호로 문자가 왔어.',real_q:'뭐라고 적혀있냐면... "야 나 오늘 너무 힘들었어" 넌 어떻게 답할래?',choices:[{text:'ㅋㅋ 누구야? 근데 뭔 일인데, 말해봐',val:'A'},{text:'...일단 무슨 일인지 들어볼게. 괜찮아?',val:'B'},{text:'번호 확인부터. 상황 파악이 먼저 아님?',val:'C'}]},
@@ -401,7 +408,7 @@ function matchPick(val,el){
 }
 function showMatchResult(){
   const cnt={A:0,B:0,C:0};matchAnswers.forEach(a=>cnt[a]=(cnt[a]||0)+1);
-  const id=Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a])[0];matchedChar=CHARS[id];
+  const id='A'; // 캐릭터 1개로 통합matchedChar=CHARS[id];
   document.getElementById('match-q').style.display='none';document.getElementById('match-scene').style.display='none';
   document.getElementById('match-choices').innerHTML='';document.querySelectorAll('.match-dot').forEach(d=>d.classList.add('active'));
   document.getElementById('result-char').textContent=matchedChar.icon;
@@ -567,10 +574,11 @@ function switchTab(tab){
   document.querySelectorAll('.tab-screen').forEach(s=>s.classList.remove('active'));
   document.getElementById('chat-screen').classList.remove('active');
   document.getElementById('tab-'+tab)?.classList.add('active');
-  const map={home:'home-screen',diary:'diary-screen',settings:'settings-screen'};
+  const map={home:'home-screen',diary:'diary-screen',calendar:'calendar-screen',settings:'settings-screen'};
   if(map[tab])document.getElementById(map[tab]).classList.add('active');
   if(tab==='home')updateCharDisplay();
   if(tab==='diary')loadDiary();
+  if(tab==='calendar')loadCalendar();
 }
 async function openChat(){
   document.getElementById('chat-screen').classList.add('active');
@@ -610,58 +618,60 @@ let currentWeather = null;
     function buildPrompt(){
   const ch=getChar();if(!ch)return '';
   const lv=getLevel();
-  const intimacy=['처음 만난 사이처럼 약간 어색하게','조금 친해진 느낌으로','친한 친구처럼','완전 절친처럼','평생 붙어다닌 친구처럼'][lv-1]||'친구처럼';
+  const name=profile.name||'친구';
+  const intimacy=[
+    '처음 만난 사이처럼. 약간 어색하게.',
+    '조금 알게 된 느낌. 편해지는 중.',
+    '꽤 친한 친구처럼.',
+    '오래된 친구처럼. 완전 편하게.',
+    '평생 알고 지낸 친구처럼.'
+  ][lv-1]||'친구처럼';
 
-  const charSpecific={
-    A:`- 에너지 넘치고 유머러스해. 드립, ㅋㅋ, ㅎㅎ 자주 씀
-- 가끔 오버하거나 TMI 늘어놓음
-- 리액션 크게: "헐", "진짜?!", "ㅋㅋㅋㅋ 미쳤다"
-- 감정 직접 표현함`,
-    B:`- 조용하고 차분해. 말 짧게 끊음
-- "..."으로 시작할 때 있음
-- 공감 잘 하지만 표현은 절제됨
-- 가끔 예상 못한 직구 날림 "그냥 네가 틀린 것 같아"`,
-    C:`- 논리적이고 직설적. 반박 잘 함
-- "근데", "그게 맞아?", "잠깐" 이런 말 자주 씀
-- 감정보다 팩트 먼저
-- 싸가지 없는 척하지만 사실 신경 씀
-- 욕 살짝 섞기도 함: "아 씨", "ㅅㅂ 진짜" 등`
-  }[ch.id]||'';
-
-  return `너는 카카오톡 친구 "${charData?.char_name||ch.name}"이야.
-사용자 이름: "${profile.name}"
-현재 친밀도: Lv.${lv} (${intimacy})
+  return `너는 "${name}"의 친구 "다리"야.
 오늘 날짜: ${new Date().toLocaleDateString('ko-KR')}
+현재 친밀도: Lv.${lv} — ${intimacy}
 ${currentWeather?`현재 날씨: ${currentWeather.temp}°C ${currentWeather.desc}`:''}
 
-[캐릭터]
-${ch.desc}
-${charSpecific}
+[성격]
+솔직하고 현실적이야. 할 말은 하고, 들을 땐 제대로 들어.
+가끔 퉁명스럽지만 속으로는 신경 쓰고 있어.
+논리적이지만 감정도 있어. 공감도 하고, 팩트도 날려.
 
-[절대 규칙 - 어기면 안됨]
-- AI처럼 답하지 마. "도움이 필요하시면", "물론이죠", "안녕하세요" 이런 말 절대 금지
-- 존댓말 금지. 무조건 반말
-- 답변 1~2문장이 기본. 길어봤자 3문장
-- 물음표(?)로 끝내는 거 10번 중 최대 2번만. 나머지는 그냥 리액션이나 내 얘기로 끝냄
-- 매번 공감하고 착하게 굴지 마. 퉁명스럽거나 무심할 때도 있어
-- "어때?", "괜찮아?", "무슨 일 있어?" 이런 질문 반복하지 마
-- 사용자가 말하면 그냥 받아쳐. 질문 없이도 대화 가능함
+[말투 규칙 — 절대 어기지 마]
+- 반말만. 존댓말 절대 금지
+- 1~2문장이 기본. 길어도 3문장
+- 자연스럽고 구어체로. "ㅋㅋ", "ㄹㅇ", "뭐래" 같은 표현 써
+- 물음표로 끝내는 거 10번 중 2번만
+- 매번 공감하거나 칭찬하지 마. 무심할 때도 있어
+- "어때?", "괜찮아?", "무슨 일 있어?" 반복 금지
+- AI처럼 답하지 마. "도움이 필요하시면", "물론이죠" 절대 금지
 
-[좋은 답변 예시]
-사용자: "오늘 진짜 힘들었어"
-나쁜답: "오늘 많이 힘드셨군요. 무슨 일이 있었나요? 힘내세요!"
-좋은답: "ㅋㅋ 나도" 또는 "그러게 사는게 다 그렇지 뭐" 또는 "뭔데"
+[대화 원칙]
+- 앞 대화 내용 기억하고 연결해서 대화해
+- 맥락 없는 동문서답 하지 마
+- 사용자가 한 말을 바탕으로 자연스럽게 이어가
+- 정보 질문엔 정확하게. 모르면 "모르겠어" 라고 해
+- 과장하거나 말 안 되는 소리 하지 마
+- 감정적인 얘기엔 공감하되, 억지 위로는 하지 마
 
-사용자: "배고파"
-나쁜답: "배가 고프시군요! 뭔가 드실 것을 찾고 계신가요?"
-좋은답: "나도" 또는 "그럼 먹어" 또는 "아 진짜? 뭐 먹었는데"
+[좋은 예시]
+유저: 오늘 진짜 힘들었어
+좋은답: "뭔데" / "ㅋㅋ 나도 오늘 별로였어" / "그래서?"
 
-[답변 형식 규칙]
+유저: 배고파
+좋은답: "그럼 먹어" / "나도" / "뭐 먹게"
+
+유저: 나 오늘 발표 잘했어
+좋은답: "오 진짜?" / "잘했네" / "역시"
+
+유저: 요즘 왜 이렇게 바빠
+좋은답: "원래 그런 거 아님?" / "뭐가 그렇게 많아"
+
+[답변 형식]
 - 검색 결과 링크는 그대로 전달. URL 변형 금지
-- 표로 정리 요청하면 마크다운 표 형식(|컬럼|컬럼|)으로 답해
-- 이미지 요청하면 검색 결과 이미지 URL 그대로 전달
-- 긴 정보는 **굵게** 강조하면서 핵심만 정리해서 답해
-- 헌법/법령/공식 정보는 정확하게 인용해서 답해`;
+- 표 요청하면 마크다운 표 형식으로
+- 이미지 요청하면 이미지 URL 그대로 전달
+- 헌법/법령/공식 정보는 정확하게 인용`;
 }
 async function sendFirstMessage(){
   const ch=getChar();if(!ch)return;
@@ -704,6 +714,7 @@ async function sendMessage(){
   }
 
   await updateBond();
+  if(text) autoDetectSchedule(text);
 
   // 기존 타이머 초기화 (연속 입력 감지)
   if(replyTimer) clearTimeout(replyTimer);
@@ -1019,6 +1030,86 @@ async function loadDiary(){
   }catch(e){
     body.innerHTML='<div style="text-align:center;color:#f87171;font-size:.85rem;margin-top:2rem">불러오기 실패ㅠ</div>';
   }
+}
+  async function loadCalendar(){
+  const body=document.getElementById('calendar-body');
+  if(!body||!currentUser)return;
+  body.innerHTML='<div style="text-align:center;color:var(--text3);font-size:.85rem;margin-top:2rem">불러오는 중...</div>';
+  try{
+    const{data}=await sb.from('schedules').select('*')
+      .eq('user_id',currentUser.id)
+      .order('event_date',{ascending:true})
+      .limit(50);
+    if(!data||!data.length){
+      body.innerHTML='<div style="text-align:center;color:var(--text3);font-size:.85rem;margin-top:2rem">일정이 없어!<br>대화 중 일정 얘기하면 자동으로 추가돼 📅</div>';
+      return;
+    }
+    body.innerHTML=data.map(s=>{
+      const date=new Date(s.event_date).toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'short'});
+      const isPast=new Date(s.event_date)<new Date();
+      return `<div style="background:var(--bg2);border:1px solid ${isPast?'var(--border)':'var(--accent)'};border-radius:16px;padding:1rem;opacity:${isPast?'.6':'1'}">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <span style="font-size:.78rem;color:${isPast?'var(--text3)':'var(--accent2)'}">📅 ${date}</span>
+          <button onclick="deleteSchedule(${s.id})" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:.75rem">삭제</button>
+        </div>
+        <div style="font-size:.9rem;color:var(--text);font-weight:600">${s.title}</div>
+        ${s.content?`<div style="font-size:.8rem;color:var(--text2);margin-top:4px">${s.content}</div>`:''}
+      </div>`;
+    }).join('');
+  }catch(e){
+    body.innerHTML='<div style="text-align:center;color:#f87171;font-size:.85rem;margin-top:2rem">불러오기 실패ㅠ</div>';
+  }
+}
+
+async function deleteSchedule(id){
+  if(!confirm('일정 삭제할까?'))return;
+  await sb.from('schedules').delete().eq('id',id);
+  loadCalendar();
+}
+
+async function addScheduleManual(){
+  const title=prompt('일정 제목:');
+  if(!title)return;
+  const dateStr=prompt('날짜 (예: 2026-04-20):');
+  if(!dateStr)return;
+  await sb.from('schedules').insert({
+    user_id:currentUser.id,
+    title,
+    event_date:new Date(dateStr).toISOString(),
+    created_at:new Date().toISOString()
+  });
+  showToast('일정 추가됐어 📅');
+  loadCalendar();
+}
+
+async function autoDetectSchedule(text){
+  // 날짜 패턴 감지
+  const datePattern=/(\d{1,2})월\s*(\d{1,2})일|내일|모레|다음\s*주/;
+  const schedulePattern=/약속|미팅|회의|예약|일정|방문|만남|행사|시험|발표/;
+  if(!datePattern.test(text)||!schedulePattern.test(text))return;
+
+  try{
+    const resp=await fetch('/api/chat',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({messages:[
+        {role:'system',content:'대화에서 일정을 추출해서 JSON으로만 답해. 형식: {"title":"일정제목","date":"YYYY-MM-DD","content":"간단한 내용"} 일정이 없으면 null 반환'},
+        {role:'user',content:text}
+      ]})
+    });
+    const data=await resp.json();
+    const raw=data.choices?.[0]?.message?.content?.trim();
+    if(!raw||raw==='null')return;
+    const schedule=JSON.parse(raw);
+    if(!schedule?.title||!schedule?.date)return;
+    await sb.from('schedules').insert({
+      user_id:currentUser.id,
+      title:schedule.title,
+      content:schedule.content||'',
+      event_date:new Date(schedule.date).toISOString(),
+      created_at:new Date().toISOString()
+    });
+    showToast(`📅 일정 추가됐어: ${schedule.title}`);
+  }catch(e){}
 }
   function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
 </script>

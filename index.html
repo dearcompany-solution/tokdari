@@ -969,30 +969,50 @@ function toggleTrash(){setTrashMode(!trashMode);}
 async function autoSaveDiary(){if(!messages.length){showToast('대화 내용이 없어!');return;}showToast('일기 생성 중... ✨');try{const resp=await fetch('/api/summarize',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages,date:new Date().toLocaleDateString('ko-KR')})});if(!resp.ok){showToast('생성 실패ㅠ');return;}const r=await resp.json();const text=(r.highlight?r.highlight+'\n\n':'')+r.summary;await sb.from('diary').insert({user_id:currentUser.id,mood:r.mood||'😊',content:text});showToast('일기 저장됐어 📔✨');}catch(e){showToast('오류났어ㅠ');}}
 async function confirmDeleteChar(){if(!confirm('"'+(charData?.char_name||'친구')+'"와 이별할까?\n\n모든 대화 기록이 삭제되고\n새 친구를 만날 수 있어.\n되돌릴 수 없어!'))return;if(!confirm('정말? 진짜 이별이야...'))return;showToast('이별 처리 중...');await sb.from('messages').delete().eq('user_id',currentUser.id);await sb.from('user_characters').delete().eq('user_id',currentUser.id);charData=null;messages=[];bondLevel=0;totalMsgs=0;chatDays=0;showToast('이별했어... 새로운 만남이 기다리고 있어');setTimeout(()=>startMatching(),1500);}
 async function uploadImage(file){
+  // 파일 크기 체크
   if(file.size>10*1024*1024){showToast('사진이 너무 커! 10MB 이하로 보내줘 📷');return null;}
-  if(!file.type.startsWith('image/')){showToast('이미지 파일만 보낼 수 있어!');return null;}
+
+  // MIME 타입 — 모바일은 image/jpeg 대신 빈 문자열로 오는 경우 있음
+  const mimeOk=file.type.startsWith('image/')||file.type==='';
+  if(!mimeOk){showToast('이미지 파일만 보낼 수 있어!');return null;}
+
   showToast('사진 올리는 중... ⏳');
   try{
-    const ext=(file.name.split('.').pop()||'jpg').toLowerCase();
-    const safeExt=['jpg','jpeg','png','gif','webp'].includes(ext)?ext:'jpg';
+    // 확장자 추출 — 모바일에서 파일명 없는 경우 대비
+    const nameParts=(file.name||'photo.jpg').split('.');
+    const rawExt=nameParts.length>1?nameParts.pop().toLowerCase():'jpg';
+    const safeExt=['jpg','jpeg','png','gif','webp'].includes(rawExt)?rawExt:'jpg';
+
+    // contentType — 모바일에서 비어있으면 확장자로 추론
+    const mimeMap={jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',gif:'image/gif',webp:'image/webp'};
+    const contentType=file.type||mimeMap[safeExt]||'image/jpeg';
+
     const path=`${currentUser.id}/${Date.now()}.${safeExt}`;
-    const{data,error}=await sb.storage.from('chat-images').upload(path,file,{
+
+    const{error}=await sb.storage.from('chat-images').upload(path,file,{
       cacheControl:'3600',
       upsert:false,
-      contentType:file.type
+      contentType
     });
+
     if(error){
       console.error('업로드 실패:',error.message);
-      if(error.message.includes('Bucket not found')){showToast('스토리지 설정 오류 - 관리자에게 문의해줘');}
-      else if(error.message.includes('row-level security')){showToast('권한 오류 - 다시 로그인해봐');}
-      else{showToast('사진 업로드 실패ㅠ 다시 시도해봐');}
+      if(error.message.includes('Bucket not found')||error.message.includes('bucket')){
+        showToast('스토리지 버킷 없음 - Supabase에 chat-images 버킷 만들어줘');
+      } else if(error.message.includes('security')||error.message.includes('policy')){
+        showToast('권한 오류 - Supabase Storage 정책 확인해줘');
+      } else {
+        showToast('업로드 실패: '+error.message);
+      }
       return null;
     }
+
     const{data:urlData}=sb.storage.from('chat-images').getPublicUrl(path);
     showToast('사진 전송 완료! 📷');
     return urlData.publicUrl;
+
   }catch(e){
-    console.error('uploadImage 오류:',e);
+    console.error('uploadImage catch:',e);
     showToast('네트워크 오류! 인터넷 확인해봐');
     return null;
   }

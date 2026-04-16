@@ -119,7 +119,8 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Noto San
 .emoji-panel.show{display:block}
 .emoji-grid{display:flex;flex-wrap:wrap;gap:2px;max-height:140px;overflow-y:auto}
 .emoji-btn{font-size:1.5rem;padding:5px;border-radius:8px;cursor:pointer;background:none;border:none;line-height:1}
-.img-preview{position:relative;display:inline-block;margin-bottom:6px}
+.img-preview{position:relative;display:inline-block;margin-bottom:6px;margin-right:6px}
+#img-preview-wrap{display:flex;flex-wrap:nowrap;overflow-x:auto;gap:4px;padding-bottom:4px}
 .img-preview img{max-height:80px;border-radius:10px;display:block}
 .img-preview-del{position:absolute;top:-6px;right:-6px;width:18px;height:18px;background:#f87171;border-radius:50%;border:none;color:#fff;font-size:.7rem;cursor:pointer;display:flex;align-items:center;justify-content:center}
 #chat-screen.trash .app-header{background:#1a0505;border-bottom-color:rgba(239,68,68,.3)}
@@ -235,7 +236,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Noto San
     <div id="chat-messages" ondragover="event.preventDefault()" ondrop="handleDrop(event)"></div>
     <div class="input-bar">
       <button class="attach-btn" onclick="document.getElementById('media-input').click()">📷</button>
-      <input type="file" id="media-input" accept="image/*,video/*" style="display:none" onchange="handleMedia(event)">
+      <input type="file" id="media-input" accept="image/*" multiple style="display:none" onchange="handleMedia(event)">
       <div class="input-wrap">
         <div class="emoji-panel" id="emoji-panel"><div class="emoji-grid" id="emoji-grid"></div></div>
         <div id="img-preview-wrap"></div>
@@ -445,7 +446,7 @@ const MATCH_Qs=[
 ];
 let currentUser=null,profile={},charData=null;
 let messages=[],isLoading=false,trashMode=false;
-let currentTab='home',pendingMedia=null;
+let currentTab='home',pendingMedia=null,pendingMediaList=[];
 let matchAnswers=[],matchStep=0,matchedChar=null;
 let bondLevel=0,totalMsgs=0,chatDays=0;
 function saveSession(p){try{localStorage.setItem('tdv3',JSON.stringify({id:String(p.id||''),name:String(p.name||''),email:String(p.email||''),auth_id:String(p.auth_id||''),char_id:String(p.char_id||''),char_name:String(p.char_name||'')}));}catch(e){}}
@@ -866,13 +867,16 @@ async function sendMessage(){
 
   document.getElementById('emoji-panel')?.classList.remove('show');
 
-  if(pendingMedia){
-  appendMsg('user','',pendingMedia.preview);
-  const imgUrl=await uploadImage(pendingMedia.file);
-  const content=imgUrl?`[이미지] ${imgUrl}`:`[사진] (업로드 실패)`;
-  messages.push({role:'user',content,created_at:new Date().toISOString()});
-  await saveMsg('user',content);
+ if(pendingMediaList.length>0){
+  const mediaSnapshot=[...pendingMediaList];
   clearMediaPreview();
+  for(const media of mediaSnapshot){
+    appendMsg('user','',media.preview);
+    const imgUrl=await uploadImage(media.file);
+    const content=imgUrl?`[이미지] ${imgUrl}`:`[사진] (업로드 실패)`;
+    messages.push({role:'user',content,created_at:new Date().toISOString()});
+    await saveMsg('user',content);
+  }
 }
 
   if(text){
@@ -1017,24 +1021,59 @@ async function uploadImage(file){
     return null;
   }
 }
- function handleMedia(e){
-  const file=e.target.files[0];if(!file)return;
-  if(!file.type.startsWith('image/')){showToast('이미지 파일만 보낼 수 있어!');return;}
-  const reader=new FileReader();
-  reader.onload=ev=>{pendingMedia={file,preview:ev.target.result};showMediaPreview(ev.target.result);};
-  reader.readAsDataURL(file);e.target.value='';
+function handleMedia(e){
+  const files=Array.from(e.target.files||[]).filter(f=>f.type.startsWith('image/'));
+  if(!files.length){showToast('이미지 파일만 보낼 수 있어!');return;}
+  if(files.length>5){showToast('한 번에 최대 5장까지만 보낼 수 있어!');files.splice(5);}
+  pendingMediaList=[];
+  document.getElementById('img-preview-wrap').innerHTML='';
+  files.forEach(file=>{
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      pendingMediaList.push({file,preview:ev.target.result});
+      addMediaPreview(ev.target.result,pendingMediaList.length-1);
+    };
+    reader.readAsDataURL(file);
+  });
+  e.target.value='';
 }
 function handleDrop(e){
   e.preventDefault();
-  const file=e.dataTransfer?.files?.[0];
-  if(!file)return;
-  if(!file.type.startsWith('image/')){showToast('이미지 파일만 보낼 수 있어!');return;}
-  const reader=new FileReader();
-  reader.onload=ev=>{pendingMedia={file,preview:ev.target.result};showMediaPreview(ev.target.result);};
-  reader.readAsDataURL(file);
+  const files=Array.from(e.dataTransfer?.files||[]).filter(f=>f.type.startsWith('image/'));
+  if(!files.length){showToast('이미지 파일만 보낼 수 있어!');return;}
+  if(files.length>5){showToast('한 번에 최대 5장까지만 보낼 수 있어!');files.splice(5);}
+  pendingMediaList=[];
+  document.getElementById('img-preview-wrap').innerHTML='';
+  files.forEach(file=>{
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      pendingMediaList.push({file,preview:ev.target.result});
+      addMediaPreview(ev.target.result,pendingMediaList.length-1);
+    };
+    reader.readAsDataURL(file);
+  });
 }
-function showMediaPreview(src){const wrap=document.getElementById('img-preview-wrap');if(!wrap)return;wrap.innerHTML=`<div class="img-preview"><img src="${src}"><button class="img-preview-del" onclick="clearMediaPreview()">✕</button></div>`;}
-function clearMediaPreview(){pendingMedia=null;const w=document.getElementById('img-preview-wrap');if(w)w.innerHTML='';}
+function addMediaPreview(src,idx){
+  const wrap=document.getElementById('img-preview-wrap');if(!wrap)return;
+  const div=document.createElement('div');div.className='img-preview';div.id='prev-'+idx;
+  div.innerHTML=`<img src="${src}"><button class="img-preview-del" onclick="removeMediaPreview(${idx})">✕</button>`;
+  wrap.appendChild(div);
+}
+function removeMediaPreview(idx){
+  pendingMediaList.splice(idx,1);
+  const wrap=document.getElementById('img-preview-wrap');if(!wrap)return;
+  wrap.innerHTML='';
+  pendingMediaList.forEach((m,i)=>addMediaPreview(m.preview,i));
+}
+function showMediaPreview(src){
+  pendingMediaList=[{file:pendingMedia?.file,preview:src}];
+  document.getElementById('img-preview-wrap').innerHTML='';
+  addMediaPreview(src,0);
+}
+function clearMediaPreview(){
+  pendingMedia=null;pendingMediaList=[];
+  const w=document.getElementById('img-preview-wrap');if(w)w.innerHTML='';
+}
 const EMOJIS=['😊','😂','🤣','😍','🥰','😘','😎','🤩','😜','😏','😢','😭','😤','😡','🤬','😱','🥺','😩','👍','👎','👏','🙏','💪','✌️','❤️','💔','🔥','✨','💯','🎉','💀','👀','🤔','😴','ㅋㅋ','ㅎㅎ','ㅠㅠ','ㅜㅜ','^^','...','🍕','🍔','🍣','☕','🎮','🎵','🎬'];
 function initEmojiPanel(){const g=document.getElementById('emoji-grid');if(!g)return;g.innerHTML=EMOJIS.map(e=>`<button class="emoji-btn" onclick="insertEmoji('${e}')">${e}</button>`).join('');}
 function toggleEmojiPanel(){const p=document.getElementById('emoji-panel');if(!p)return;p.classList.toggle('show');if(p.classList.contains('show'))initEmojiPanel();}

@@ -1638,6 +1638,7 @@ function showPrivacy(){document.getElementById('privacy-modal').style.display='b
 function closeModal(id){document.getElementById(id).style.display='none';}
  async function checkConsent(){
   if(localStorage.getItem('td_consent')==='1')return;
+  if(!currentUser?.id){return;}
   try{
     const{data}=await sb.from('profiles').select('agreed_at').eq('id',currentUser.id).maybeSingle();
     if(data?.agreed_at){
@@ -1654,7 +1655,9 @@ async function confirmConsent(){
   const errEl=document.getElementById('consent-error');
   if(!terms||!privacy||!age){errEl.textContent='필수 항목 모두 체크해줘!';return;}
   try{
-    await sb.from('profiles').update({agreed_at:new Date().toISOString()}).eq('id',currentUser.id);
+    if(currentUser?.id){
+      await sb.from('profiles').update({agreed_at:new Date().toISOString()}).eq('id',currentUser.id);
+    }
   }catch(e){console.error(e);}
   localStorage.setItem('td_consent','1');
   document.getElementById('consent-modal').style.display='none';

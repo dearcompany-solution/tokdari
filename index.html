@@ -341,8 +341,26 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Noto San
           <h3>알림 설정</h3>
           <div class="toggle-row"><span class="toggle-label">앱 알림 허용</span><div class="toggle on" id="toggle-notif" onclick="toggleNotif(this)"><div class="toggle-thumb"></div></div></div>
           <div class="toggle-row"><span class="toggle-label">먼저 선톡 받기</span><div class="toggle on" id="toggle-ping" onclick="this.classList.toggle('on')"><div class="toggle-thumb"></div></div></div>
-          <div class="toggle-row"><span class="toggle-label">알림음</span><div class="toggle on" id="toggle-sound" onclick="this.classList.toggle('on')"><div class="toggle-thumb"></div></div></div>
+          <div class="toggle-row"><span class="toggle-label">알림음</span><div class="toggle on" id="toggle-sound" onclick="toggleSound(this)"><div class="toggle-thumb"></div></div></div>
           <div class="toggle-row"><span class="toggle-label">진동</span><div class="toggle on" id="toggle-vibrate" onclick="this.classList.toggle('on')"><div class="toggle-thumb"></div></div></div>
+          <div id="sound-select-wrap" style="display:flex;flex-direction:column;gap:6px">
+            <div style="font-size:.75rem;color:var(--text3);font-weight:600">메시지 수신음</div>
+            <select class="sound-select" id="select-msg-sound" onchange="saveSoundSettings()">
+              <option value="notify1.mp3">🐧 선톡 메시지음 (기본)</option>
+              <option value="notify2.mp3">🔔 선톡 알림음</option>
+              <option value="notify3.mp3">✨ 특별 알림음</option>
+              <option value="none">🔇 무음</option>
+            </select>
+            <div style="font-size:.75rem;color:var(--text3);font-weight:600;margin-top:4px">선톡 알림음</div>
+            <select class="sound-select" id="select-ping-sound" onchange="saveSoundSettings()">
+              <option value="notify2.mp3">🔔 선톡 알림음 (기본)</option>
+              <option value="notify1.mp3">🐧 선톡 메시지음</option>
+              <option value="notify3.mp3">✨ 특별 알림음</option>
+              <option value="none">🔇 무음</option>
+            </select>
+            <button onclick="previewSound('msg')" style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;color:var(--text2);font-size:.82rem;padding:8px;cursor:pointer;font-family:'Noto Sans KR',sans-serif">🔊 메시지음 미리듣기</button>
+            <button onclick="previewSound('ping')" style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;color:var(--text2);font-size:.82rem;padding:8px;cursor:pointer;font-family:'Noto Sans KR',sans-serif">🔊 선톡음 미리듣기</button>
+          </div>
         </div>
         <div class="settings-section">
           <h3>친구 관리</h3>
@@ -640,6 +658,7 @@ async function startApp(){
   const appEl=document.getElementById('app');appEl.classList.add('show');appEl.style.display='flex';
   hideSplash();
   await checkConsent();
+    initSounds();
   const{data}=await sb.from('user_characters').select('*').eq('user_id',currentUser.id).maybeSingle();
   if(!data){startMatching();return;}
   charData=data;bondLevel=data.bond||0;totalMsgs=data.total_msgs||0;chatDays=data.chat_days||0;
@@ -1102,7 +1121,8 @@ function appendMsg(role,content,imgSrc){
   if(imgSrc){const img=document.createElement('img');img.src=imgSrc;bub.appendChild(img);}
   else if(typeof content==='string')bub.innerHTML=fmtContent(content);
   const tm=document.createElement('div');tm.className='msg-time';tm.textContent=time;
-  col.appendChild(bub);col.appendChild(tm);row.appendChild(col);wrap.appendChild(row);scrollToBottom();
+  col.appendChild(bub);col.appendChild(tm);row.appendChild(col);wrap.appendChild(row);// 메시지 수신음 (AI 메시지 받을 때만)
+  if(role==='ai')playMsgSound();scrollToBottom();
 }
 function renderAllMessages(){
   document.getElementById('chat-messages').innerHTML='';let lastDate='';
@@ -1663,6 +1683,62 @@ async function confirmConsent(){
   }catch(e){console.error(e);}
   localStorage.setItem('td_consent','1');
   document.getElementById('consent-modal').style.display='none';
+}
+  // ── 사운드 시스템 ──
+let msgAudio=null;
+let pingAudio=null;
+
+function initSounds(){
+  const msgSound=localStorage.getItem('td_msg_sound')||'notify1.mp3';
+  const pingSound=localStorage.getItem('td_ping_sound')||'notify2.mp3';
+  if(msgSound!=='none'){msgAudio=new Audio('/sounds/'+msgSound);msgAudio.volume=0.7;}
+  if(pingSound!=='none'){pingAudio=new Audio('/sounds/'+pingSound);pingAudio.volume=0.7;}
+  // 설정 화면 select 값 복원
+  const ms=document.getElementById('select-msg-sound');
+  const ps=document.getElementById('select-ping-sound');
+  if(ms)ms.value=msgSound;
+  if(ps)ps.value=pingSound;
+  // 토글 상태 복원
+  const soundOn=localStorage.getItem('td_sound_on')!=='0';
+  const tog=document.getElementById('toggle-sound');
+  if(tog){if(soundOn)tog.classList.add('on');else tog.classList.remove('on');}
+  const wrap=document.getElementById('sound-select-wrap');
+  if(wrap)wrap.style.display=soundOn?'flex':'none';
+}
+function saveSoundSettings(){
+  const ms=document.getElementById('select-msg-sound')?.value||'notify1.mp3';
+  const ps=document.getElementById('select-ping-sound')?.value||'notify2.mp3';
+  localStorage.setItem('td_msg_sound',ms);
+  localStorage.setItem('td_ping_sound',ps);
+  // 오디오 객체 갱신
+  msgAudio=ms!=='none'?new Audio('/sounds/'+ms):null;
+  pingAudio=ps!=='none'?new Audio('/sounds/'+ps):null;
+  if(msgAudio)msgAudio.volume=0.7;
+  if(pingAudio)pingAudio.volume=0.7;
+  showToast('알림음 설정 저장됐어! 🔔');
+}
+function toggleSound(el){
+  el.classList.toggle('on');
+  const on=el.classList.contains('on');
+  localStorage.setItem('td_sound_on',on?'1':'0');
+  const wrap=document.getElementById('sound-select-wrap');
+  if(wrap)wrap.style.display=on?'flex':'none';
+}
+function playMsgSound(){
+  const on=localStorage.getItem('td_sound_on')!=='0';
+  if(!on||!msgAudio)return;
+  try{msgAudio.currentTime=0;msgAudio.play().catch(()=>{});}catch(e){}
+}
+function playPingSound(){
+  const on=localStorage.getItem('td_sound_on')!=='0';
+  if(!on||!pingAudio)return;
+  try{pingAudio.currentTime=0;pingAudio.play().catch(()=>{});}catch(e){}
+}
+function previewSound(type){
+  const on=localStorage.getItem('td_sound_on')!=='0';
+  if(!on){showToast('알림음 토글을 먼저 켜줘!');return;}
+  if(type==='msg'&&msgAudio){try{msgAudio.currentTime=0;msgAudio.play().catch(()=>{});}catch(e){}}
+  else if(type==='ping'&&pingAudio){try{pingAudio.currentTime=0;pingAudio.play().catch(()=>{});}catch(e){}}
 }
   function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
 </script>

@@ -1137,7 +1137,7 @@ try{
 if(totalMsgs>0 && totalMsgs%10===0) autoSaveDiary();
   isLoading=false;document.getElementById('chat-status').textContent='온라인';
 }
-function appendMsg(role,content,imgSrc){
+function appendMsg(role,content,imgSrc,silent=false){
   const wrap=document.getElementById('chat-messages');const row=document.createElement('div');row.className='msg-row'+(role==='user'?' user':'');
   const now=new Date();const time=now.getHours()+':'+String(now.getMinutes()).padStart(2,'0');
   if(role==='ai'){
@@ -1151,14 +1151,14 @@ function appendMsg(role,content,imgSrc){
   else if(typeof content==='string')bub.innerHTML=fmtContent(content);
   const tm=document.createElement('div');tm.className='msg-time';tm.textContent=time;
   col.appendChild(bub);col.appendChild(tm);row.appendChild(col);wrap.appendChild(row);// 메시지 수신음 (AI 메시지 받을 때만)
-  if(role==='ai')playMsgSound();scrollToBottom();
+   if(role==='ai'&&!silent)playMsgSound();scrollToBottom();
 }
 function renderAllMessages(){
   document.getElementById('chat-messages').innerHTML='';let lastDate='';
   messages.forEach(m=>{
     const d=m.created_at?new Date(m.created_at).toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'short'}):'';
     if(d&&d!==lastDate){const div=document.createElement('div');div.className='date-div';div.textContent=d;document.getElementById('chat-messages').appendChild(div);lastDate=d;}
-    appendMsg(m.role==='user'?'user':'ai',m.content);
+    appendMsg(m.role==='user'?'user':'ai',m.content,null,true);
   });
 }
 function showTyping(){const wrap=document.getElementById('chat-messages');const row=document.createElement('div');row.className='msg-row';row.id='typ-'+Date.now();const av=document.createElement('div');av.className='msg-av';const ch=getChar();av.textContent=ch?.icon||'🌱';const b=document.createElement('div');b.className='typing-bubble';b.innerHTML='<div class="tdot"></div><div class="tdot"></div><div class="tdot"></div>';row.appendChild(av);row.appendChild(b);wrap.appendChild(row);scrollToBottom();return row.id;}

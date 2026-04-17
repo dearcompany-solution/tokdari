@@ -92,5 +92,4 @@ if(action==='resetPassword'){
 
   return res.status(400).json({ error: '잘못된 요청' });
 };
-  return res.status(400).json({ error: '잘못된 요청' });
-};
+

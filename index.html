@@ -1436,6 +1436,7 @@ function scheduleRandomPing(){
     if(!document.hidden&&chatOpen){
       appendMsg('ai',msg);
     }else if(!document.hidden){
+      playPingSound();
       showToast(`${name}: ${msg}`);
     }
 

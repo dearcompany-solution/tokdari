@@ -1764,19 +1764,25 @@ async function confirmConsent(){
   errEl.textContent='저장 중...';
   try{
     if(currentUser?.id){
-      const{error}=await sb.from('profiles').update({agreed_at:new Date().toISOString()}).eq('id',currentUser.id);
+      const{error}=await sb.from('profiles')
+        .update({agreed_at:new Date().toISOString()})
+        .eq('id',currentUser.id);
       if(error){
-        console.error('agreed_at 저장 실패:',error.message);
-        errEl.textContent='저장 실패: '+error.message;
-        return;
+        // agreed_at 컬럼 없으면 upsert로 시도
+        const{error:e2}=await sb.from('profiles')
+          .upsert({id:currentUser.id,agreed_at:new Date().toISOString()},{onConflict:'id'});
+        if(e2){
+          errEl.textContent='저장 실패: '+e2.message;
+          return;
+        }
       }
     }
   }catch(e){
-    console.error('confirmConsent 오류:',e);
-    errEl.textContent='오류 발생: '+e.message;
+    errEl.textContent='오류: '+e.message;
     return;
   }
   localStorage.setItem('td_consent','1');
+  errEl.textContent='';
   document.getElementById('consent-modal').style.display='none';
 }
   // ── 사운드 시스템 ──

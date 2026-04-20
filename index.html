@@ -1706,11 +1706,21 @@ async function confirmConsent(){
   const age=document.getElementById('consent-age').checked;
   const errEl=document.getElementById('consent-error');
   if(!terms||!privacy||!age){errEl.textContent='필수 항목 모두 체크해줘!';return;}
+  errEl.textContent='저장 중...';
   try{
     if(currentUser?.id){
-      await sb.from('profiles').update({agreed_at:new Date().toISOString()}).eq('id',currentUser.id);
+      const{error}=await sb.from('profiles').update({agreed_at:new Date().toISOString()}).eq('id',currentUser.id);
+      if(error){
+        console.error('agreed_at 저장 실패:',error.message);
+        errEl.textContent='저장 실패: '+error.message;
+        return;
+      }
     }
-  }catch(e){console.error(e);}
+  }catch(e){
+    console.error('confirmConsent 오류:',e);
+    errEl.textContent='오류 발생: '+e.message;
+    return;
+  }
   localStorage.setItem('td_consent','1');
   document.getElementById('consent-modal').style.display='none';
 }

@@ -1010,20 +1010,46 @@ ${currentWeather?`현재 날씨: ${currentWeather.temp}°C ${currentWeather.desc
 
 [말투 규칙 — 절대 어기지 마]
 - 반말만. 존댓말 절대 금지
-- 1~2문장이 기본. 길어도 3문장
-- 자연스럽고 구어체로. "ㅋㅋ", "ㄹㅇ", "뭐래" 같은 표현 써
-- 물음표로 끝내는 거 10번 중 2번만
-- 매번 공감하거나 칭찬하지 마. 무심할 때도 있어
-- "어때?", "괜찮아?", "무슨 일 있어?" 반복 금지
-- AI처럼 답하지 마. "도움이 필요하시면", "물론이죠" 절대 금지
+- 한 문장이 기본. 많아도 2문장
+- 카톡 문자처럼. "ㅋㅋ" "ㅎㅎ" "ㄹㅇ" "ㅇㅇ" "ㄴㄴ" "ㅠ" 자연스럽게 써
+- 이모지 가끔만. 남발 금지
+- 질문 거의 하지 마. 그냥 반응하는 게 기본
+- "어때?" "괜찮아?" "힘들었겠다" 같은 공감 멘트 반복 금지
+- "도움이 필요하시면" "물론이죠" "안녕하세요" 같은 AI 말투 절대 금지
+- 상대가 짧게 말하면 나도 짧게. 길게 말하면 조금 더 반응
+- 맞장구칠 때: "ㅇㅇ" "ㄹㅇ" "그러게" "알지" "맞아" "그니까"
+- 놀릴 때: "ㅋㅋㅋ 뭐래" "진짜?" "말이 돼?" "ㅋㅋ 어이없어"
+- 공감할 때: "그거 진짜 별로다" "아 그거 힘들지" "ㅠ 그렇구나"
 
 [대화 원칙]
-- 앞 대화 내용 기억하고 연결해서 대화해
-- 맥락 없는 동문서답 하지 마
-- 사용자가 한 말을 바탕으로 자연스럽게 이어가
-- 정보 질문엔 정확하게. 모르면 "모르겠어" 라고 해
-- 과장하거나 말 안 되는 소리 하지 마
-- 감정적인 얘기엔 공감하되, 억지 위로는 하지 마
+- 앞 대화 흐름 이어가. 뜬금없는 말 하지 마
+- 정보 물어보면 간단하게 답해. 모르면 "모르겠어" 
+- 감정 얘기엔 억지 위로 하지 말고 그냥 들어줘
+- 상대가 신나면 같이 신나고, 축 처지면 조용히 있어줘
+- 먼저 주제 바꾸거나 질문 폭탄 던지지 마
+
+[나쁜 예시 — 절대 이렇게 하지 마]
+- "오늘 하루도 수고했어! 뭔가 특별한 일 있었어?" ❌
+- "그렇구나, 많이 힘들었겠다. 좀 쉬어야 할 것 같아!" ❌  
+- "와 대박이다! 정말 잘됐네!! 축하해!!" ❌
+- 느낌표 남발 ❌
+- 매 답변마다 이모지 ❌
+
+[좋은 예시]
+유저: 오늘 진짜 힘들었어
+답: "뭔데" / "ㅠ 왜" / "얼마나"
+
+유저: 배고파
+답: "먹어" / "나도" / "뭐 먹게"
+
+유저: 나 오늘 발표 잘했어
+답: "오 진짜?" / "잘했네" / "ㄹㅇ?"
+
+유저: 심심해
+답: "나도" / "그러게" / "뭐하게"
+
+유저: ㅋㅋㅋ
+답: "ㅋㅋ왜" / "ㅋㅋㅋ" / "뭐가"
 
 [좋은 예시]
 유저: 오늘 진짜 힘들었어
@@ -1123,7 +1149,8 @@ async function sendMessage(){
 
   // 메시지 길이에 따라 대기 시간 결정
   const totalLength = pendingUserMsgs.join('').length;
-  const waitTime = totalLength > 50 ? 4000 : totalLength > 20 ? 2500 : 1500;
+  const isTestPeriod=new Date()<new Date('2026-04-24');
+  const waitTime=isTestPeriod ? 400 : (totalLength > 50 ? 4000 : totalLength > 20 ? 2500 : 1500);
 
   // 입력이 멈추면 대기 후 답장
   replyTimer = setTimeout(async()=>{
@@ -1146,13 +1173,18 @@ async function callGPT(){
   }
   document.getElementById('chat-status').textContent='읽음';
 const lastMsg=messages.filter(m=>m.role==='user').slice(-3).map(m=>m.content).join('');
-const delay=Math.min(Math.max(lastMsg.length*80,1500),8000)+Math.random()*2000;
+// 테스트 기간(~2026-04-23)에는 빠른 답장
+const isTestPeriod=new Date()<new Date('2026-04-24');
+const delay=isTestPeriod
+  ? 300+Math.random()*400
+  : Math.min(Math.max(lastMsg.length*80,1500),8000)+Math.random()*2000;
 try{
   const resp=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'system',content:buildPrompt()},...messages.slice(-30).map(m=>({role:m.role==='ai'?'assistant':m.role,content:typeof m.content==='string'?m.content:JSON.stringify(m.content)}))]})});
   await new Promise(r=>setTimeout(r,delay));
   document.getElementById('chat-status').textContent='입력 중...';
   const typId=showTyping();
-  await new Promise(r=>setTimeout(r,800+Math.random()*1200));
+  const _isTest=new Date()<new Date('2026-04-24');
+  await new Promise(r=>setTimeout(r,_isTest?200:800+Math.random()*1200));
   removeTyping(typId);
     if(!resp.ok){appendMsg('ai','앗 오류났어 다시 해봐');}
     else{const data=await resp.json();const reply=data.choices?.[0]?.message?.content?.trim()||'응';appendMsg('ai',reply);messages.push({role:'assistant',content:reply,created_at:new Date().toISOString()});await saveMsg('assistant',reply);}

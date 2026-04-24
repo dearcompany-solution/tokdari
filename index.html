@@ -1899,17 +1899,18 @@ async function addScheduleManual(){
 
 
 async function autoDetectSchedule(text){
-  // 키워드 감지 - 일정 관련 단어 있는지만 체크
-  const schedulePattern=/약속|미팅|회의|예약|일정|방문|만남|행사|시험|발표|면접|모임|데이트|여행|출장|병원|수업|강의|콘서트|공연|결혼식|생일|기념일/;
-  const datePattern=/(\d{1,2})월\s*(\d{1,2})일|내일|모레|다음\s*주|이번\s*주|월요일|화요일|수요일|목요일|금요일|토요일|일요일|\d{4}[-./]\d{1,2}/;
-  // 일정 키워드 OR 날짜 키워드 중 하나라도 있으면 감지 시도
+  const schedulePattern=/약속|미팅|회의|예약|일정|방문|만남|행사|시험|발표|면접|모임|데이트|여행|출장|병원|수업|강의|콘서트|공연|결혼식|생일|기념일|피부과|치과|내과|정형외과|안과|이비인후과/;
+  const datePattern=/(\d{1,2})월\s*(\d{1,2})일|내일|모레|다음\s*주|이번\s*주|월요일|화요일|수요일|목요일|금요일|토요일|일요일|\d{1,2}시/;
   if(!schedulePattern.test(text)&&!datePattern.test(text))return;
+  if(!schedulePattern.test(text))return;
 
   try{
     const today=new Date();
     const todayStr=today.toISOString().slice(0,10);
+    const tomorrow=new Date(today);tomorrow.setDate(today.getDate()+1);
+    const tomorrowStr=tomorrow.toISOString().slice(0,10);
 
-    // OpenAI 직접 호출 (chat.js 통하지 않고)
+    // api/summarize 대신 직접 OpenAI 호출 구조로 요청
     const resp=await fetch('/api/chat',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
@@ -1917,38 +1918,40 @@ async function autoDetectSchedule(text){
         messages:[
           {
             role:'system',
-            content:`오늘 날짜: ${todayStr}
-너는 일정 추출 전문가야. 아래 메시지에서 일정을 추출해줘.
-반드시 JSON 형식으로만 응답해. 다른 텍스트 절대 금지.
-일정 있으면: {"title":"제목","date":"YYYY-MM-DD","time":"HH:MM","content":"내용"}
-일정 없으면: null
-- 내일=오늘+1일, 모레=오늘+2일로 계산
-- 시간 없으면 time은 null
-- 제목은 간결하게 (예: 병원 예약, 친구 약속, 팀 회의)`
+            content:`[일정추출모드] 오늘:${todayStr} 내일:${tomorrowStr}
+JSON만 반환. 다른 텍스트 금지. 마크다운 금지.
+일정있으면: {"title":"제목","date":"YYYY-MM-DD","time":"HH:MM","content":"내용"}
+일정없으면: null
+규칙:
+- 내일=${tomorrowStr}
+- 모레=${new Date(today.getTime()+2*86400000).toISOString().slice(0,10)}
+- 시간은 24시간 형식 (오후2시=14:00)
+- 시간없으면 time=null`
           },
-          {role:'user',content:text}
+          {role:'user',content:`일정 추출: "${text}"`}
         ]
       })
     });
 
     const data=await resp.json();
     const raw=data.choices?.[0]?.message?.content?.trim()||'';
-    if(!raw||raw==='null'||raw==='')return;
+    if(!raw||raw==='null')return;
 
-    // JSON 파싱 - 마크다운 코드블록 제거
-    const clean=raw.replace(/```json|```/g,'').trim();
+    const clean=raw.replace(/```json|```|\n/g,'').trim();
     let schedule;
-    try{schedule=JSON.parse(clean);}catch(e){return;}
-    if(!schedule||!schedule.title||!schedule.date)return;
+    try{schedule=JSON.parse(clean);}catch(e){
+      console.error('일정 JSON 파싱 실패:',clean);return;
+    }
+    if(!schedule?.title||!schedule?.date)return;
 
-    // 날짜 유효성 검사
+    // 날짜+시간 조합
     const eventDateObj=schedule.time
       ?new Date(`${schedule.date}T${schedule.time}:00`)
       :new Date(`${schedule.date}T09:00:00`);
     if(isNaN(eventDateObj.getTime()))return;
 
     // 과거 날짜 제외
-    if(eventDateObj<new Date()-86400000)return;
+    if(eventDateObj<new Date(Date.now()-86400000))return;
 
     // 중복 체크
     const{data:existing}=await sb.from('schedules')
@@ -1958,10 +1961,7 @@ async function autoDetectSchedule(text){
       .gte('event_date',schedule.date+'T00:00:00')
       .lte('event_date',schedule.date+'T23:59:59')
       .maybeSingle();
-    if(existing){
-      console.log('중복 일정 스킵:',schedule.title);
-      return;
-    }
+    if(existing)return;
 
     // DB 저장
     const{error}=await sb.from('schedules').insert({
@@ -1972,24 +1972,20 @@ async function autoDetectSchedule(text){
       created_at:new Date().toISOString()
     });
 
-    if(error){
-      console.error('일정 저장 실패:',error.message);
-      return;
-    }
+    if(error){console.error('일정 저장 실패:',error.message);return;}
 
-    const timeStr=schedule.time?` ${schedule.time}`:'';
     const dateLabel=eventDateObj.toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'short'});
-    showToast(`📅 일정 등록됐어: ${schedule.title} (${dateLabel}${timeStr})`);
+    const timeStr=schedule.time?` ${schedule.time}`:'';
+    showToast(`📅 ${schedule.title} (${dateLabel}${timeStr}) 등록됐어!`);
 
     // 캘린더 새로고침
     if(currentTab==='calendar')loadCalendar();
+    else calSchedules=await sb.from('schedules').select('*').eq('user_id',currentUser.id).then(r=>r.data||[]);
 
     // 알림 예약
     scheduleEventReminder(schedule.title,eventDateObj,schedule.content||'');
 
-  }catch(e){
-    console.error('일정 감지 오류:',e);
-  }
+  }catch(e){console.error('autoDetectSchedule 오류:',e);}
 }
 
 function scheduleEventReminder(title, eventDate, content){

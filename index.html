@@ -1897,7 +1897,9 @@ function renderCalendar(){
     const dateStr=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const isToday=today.getFullYear()===calYear&&today.getMonth()===calMonth&&today.getDate()===d;
     const isSelected=calSelectedDate===dateStr;
-    const hasEvent=calSchedules.some(s=>s.event_date?.startsWith(dateStr));
+    const hasEvent=calSchedules.some(s=>
+      (s.event_date&&s.event_date.startsWith(dateStr))||(s.due_date&&s.due_date===dateStr)
+    );
     const dayOfWeek=(firstDay+d-1)%7;
     const color=dayOfWeek===0?'#f87171':dayOfWeek===6?'#60a5fa':'var(--text)';
 
@@ -1914,7 +1916,11 @@ function selectCalDate(dateStr){
   renderCalendar();
   const body=document.getElementById('calendar-body');
   if(!body)return;
-  const daySchedules=calSchedules.filter(s=>s.event_date?.startsWith(dateStr));
+  const daySchedules=calSchedules.filter(s=>{
+    if(s.event_date)return s.event_date.startsWith(dateStr);
+    if(s.due_date)return s.due_date===dateStr;
+    return false;
+  });
   const dateLabel=new Date(dateStr+('T00:00:00')).toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'short'});
   const isToday=dateStr===new Date().toISOString().slice(0,10);
 
@@ -1949,7 +1955,7 @@ async function loadCalendar(){
   try{
     const{data}=await sb.from('schedules').select('*')
       .eq('user_id',currentUser.id)
-      .order('event_date',{ascending:true});
+      .order('event_date',{ascending:true,nullsFirst:false});
     calSchedules=data||[];
     renderCalendar();
     // 오늘 날짜 선택
@@ -1962,20 +1968,20 @@ async function loadCalendar(){
 async function deleteSchedule(id){
   if(!confirm('일정 삭제할까?'))return;
   await sb.from('schedules').delete().eq('id',id);
-  await loadCalendar();
-  showToast('일정 삭제됐어!');
+  loadCalendar();
 }
 
 async function addScheduleManual(){
   const title=prompt('일정 제목:');
   if(!title)return;
-  const dateStr=calSelectedDate||new Date().toISOString().slice(0,10);
-  const dateLabel=new Date(dateStr).toLocaleDateString('ko-KR',{month:'long',day:'numeric'});
-  if(!confirm(`${dateLabel}에 "${title}" 추가할까?`))return;
+  const dateStr=prompt('날짜 (예: 2026-04-25):');
+  if(!dateStr)return;
+  const timeStr=prompt('시간 (예: 14:00, 없으면 엔터):')||'09:00';
   await sb.from('schedules').insert({
     user_id:currentUser.id,title,
     content:'',
     event_date:new Date(dateStr+'T09:00:00').toISOString(),
+    due_date:dateStr,
     created_at:new Date().toISOString()
   });
   showToast('일정 추가됐어 📅');
@@ -2021,8 +2027,7 @@ async function autoDetectSchedule(text){
       .select('id')
       .eq('user_id',currentUser.id)
       .eq('title',schedule.title)
-      .gte('event_date',schedule.date+'T00:00:00')
-      .lte('event_date',schedule.date+'T23:59:59')
+      .eq('due_date',schedule.date)
       .maybeSingle();
     if(existing)return;
 
@@ -2032,6 +2037,7 @@ async function autoDetectSchedule(text){
       title:schedule.title,
       content:schedule.content||'',
       event_date:eventDateObj.toISOString(),
+      due_date:schedule.date,
       created_at:new Date().toISOString()
     });
     if(error){console.error('일정 저장 실패:',error.message);return;}

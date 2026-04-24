@@ -1225,7 +1225,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 });
 function setTrashMode(on){trashMode=on;const s=document.getElementById('chat-screen');if(on){s.classList.add('trash');document.getElementById('chat-status').textContent='💢 쓰레기통 모드';}else{s.classList.remove('trash');document.getElementById('chat-status').textContent='온라인';}}
 function toggleTrash(){setTrashMode(!trashMode);}
-async function autoSaveDiary(){if(!messages.length){showToast('대화 내용이 없어!');return;}showToast('일기 생성 중... ✨');try{const resp=await fetch('/api/summarize',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages,date:new Date().toLocaleDateString('ko-KR')})});if(!resp.ok){showToast('생성 실패ㅠ');return;}const r=await resp.json();const text=(r.highlight?r.highlight+'\n\n':'')+r.summary;await sb.from('diary').insert({user_id:currentUser.id,mood:r.mood||'😊',content:text});showToast('일기 저장됐어 📔✨');}catch(e){showToast('오류났어ㅠ');}}
+
 async function confirmDeleteChar(){if(!confirm('"'+(charData?.char_name||'친구')+'"와 이별할까?\n\n모든 대화 기록이 삭제되고\n새 친구를 만날 수 있어.\n되돌릴 수 없어!'))return;if(!confirm('정말? 진짜 이별이야...'))return;showToast('이별 처리 중...');await sb.from('messages').delete().eq('user_id',currentUser.id);await sb.from('user_characters').delete().eq('user_id',currentUser.id);charData=null;messages=[];bondLevel=0;totalMsgs=0;chatDays=0;showToast('이별했어... 새로운 만남이 기다리고 있어');setTimeout(()=>startMatching(),1500);}
 async function uploadImage(file){
   // 파일 크기 체크
@@ -1567,21 +1567,42 @@ async function loadDiary(){
     const{data}=await sb.from('diary').select('*')
       .eq('user_id',currentUser.id)
       .order('created_at',{ascending:false})
-      .limit(30);
+      .limit(60);
     if(!data||!data.length){
-      body.innerHTML='<div style="text-align:center;color:var(--text3);font-size:.85rem;margin-top:2rem">아직 일기가 없어!<br>대화하면 자동으로 기록돼 😊</div>';
+      body.innerHTML=`<div style="text-align:center;color:var(--text3);font-size:.85rem;margin-top:3rem;line-height:2">
+        📔<br>아직 일기가 없어!<br>대화하면 자동으로 기록돼
+      </div>`;
       return;
     }
-    body.innerHTML=data.map(d=>{
-      const date=new Date(d.created_at).toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'short'});
-      return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:1rem">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-          <span style="font-size:1.4rem">${d.mood||'😊'}</span>
-          <span style="font-size:.78rem;color:var(--text3)">${date}</span>
-        </div>
-        <div style="font-size:.85rem;color:var(--text2);line-height:1.7;white-space:pre-wrap">${d.content||''}</div>
-      </div>`;
-    }).join('');
+
+    // 날짜별 그룹핑
+    const groups={};
+    data.forEach(d=>{
+      const dateKey=new Date(d.created_at).toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'short'});
+      if(!groups[dateKey])groups[dateKey]=[];
+      groups[dateKey].push(d);
+    });
+
+    body.innerHTML=Object.entries(groups).map(([dateKey,entries])=>`
+      <div style="margin-bottom:4px">
+        <div style="font-size:.72rem;color:var(--text3);font-weight:700;letter-spacing:.04em;padding:0 4px;margin-bottom:6px">${dateKey}</div>
+        ${entries.map(d=>{
+          const parts=d.content?.split('\n\n')||[];
+          const highlight=parts.length>1?parts[0]:'';
+          const summary=parts.length>1?parts.slice(1).join('\n\n'):parts[0]||'';
+          return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:1rem;margin-bottom:8px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+              <span style="font-size:1.6rem">${d.mood||'😊'}</span>
+              <div style="flex:1">
+                ${highlight?`<div style="font-size:.82rem;font-weight:700;color:var(--text)">${highlight}</div>`:''}
+                <div style="font-size:.72rem;color:var(--text3);margin-top:2px">${new Date(d.created_at).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})}</div>
+              </div>
+            </div>
+            <div style="font-size:.84rem;color:var(--text2);line-height:1.8;white-space:pre-wrap;border-top:1px solid var(--divider);padding-top:10px">${summary}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    `).join('');
   }catch(e){
     body.innerHTML='<div style="text-align:center;color:#f87171;font-size:.85rem;margin-top:2rem">불러오기 실패ㅠ</div>';
   }

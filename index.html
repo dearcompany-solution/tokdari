@@ -1241,22 +1241,27 @@ let pendingUserMsgs = [];
 async function sendMessage(){
   const ta=document.getElementById('msg-input');
   const text=ta.value.trim();
-  if(!text&&!pendingMedia)return;
+  // 사진만 있어도 전송 가능하도록 수정
+  if(!text&&pendingMediaList.length===0&&!pendingMedia)return;
 
   document.getElementById('emoji-panel')?.classList.remove('show');
 
- if(pendingMediaList.length>0){
-  const mediaSnapshot=[...pendingMediaList];
-  clearMediaPreview();
-  for(const media of mediaSnapshot){
-    appendMsg('user','',media.preview);
-    const imgUrl=await uploadImage(media.file);
-    const content=imgUrl?`[이미지] ${imgUrl}`:`[사진] (업로드 실패)`;
-    messages.push({role:'user',content,created_at:new Date().toISOString()});
-    await saveMsg('user',content);
+  // 사진 전송
+  if(pendingMediaList.length>0){
+    const mediaSnapshot=[...pendingMediaList];
+    clearMediaPreview();
+    for(const media of mediaSnapshot){
+      appendMsg('user','',media.preview);
+      const imgUrl=await uploadImage(media.file);
+      const content=imgUrl?`[이미지] ${imgUrl}`:`[사진] (업로드 실패)`;
+      messages.push({role:'user',content,created_at:new Date().toISOString()});
+      await saveMsg('user',content);
+    }
+    // 사진만 보낼 때도 GPT 답장 오도록
+    if(!text) pendingUserMsgs.push('[사진을 보냈어]');
   }
-}
 
+  // 텍스트 전송
   if(text){
     ta.value='';ta.style.height='auto';
     appendMsg('user',text);
@@ -1266,8 +1271,9 @@ async function sendMessage(){
   } else {
     ta.value='';ta.style.height='auto';
   }
-// 유저 답장 시간 기록
-    localStorage.setItem('td_last_user_reply', Date.now().toString());
+
+  // 유저 답장 시간 기록
+  localStorage.setItem('td_last_user_reply', Date.now().toString());
   await updateBond();
   if(text) autoDetectSchedule(text);
 

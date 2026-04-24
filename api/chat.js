@@ -30,7 +30,7 @@ module.exports = async function handler(req, res) {
     const systemMsg = messages.find(m => m.role === 'system')?.content || '';
 
     const isExpertMode = /척척박사|뉴스박사|건강박사|경제박사/.test(systemMsg);
-    const noSearchNeeded = !isExpertMode && /힘들어|피곤|슬퍼|기뻐|화나|보고싶|사랑|ㅋㅋ|ㅠㅠ|밥|잠|자야|놀자|심심/.test(lastUserMsg);
+    const noSearchNeeded = !isExpertMode && /힘들어|피곤|슬퍼|기뻐|화나|보고싶|사랑|ㅋㅋ|ㅠㅠ|밥|잠|자야|놀자|심심|날씨|기온|온도|습도|비와|눈와|춥|덥/.test(lastUserMsg);
     const needsSearch = isExpertMode || (
       !noSearchNeeded &&
       lastUserMsg.length > 10 &&

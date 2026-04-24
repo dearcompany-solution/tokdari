@@ -715,6 +715,7 @@ async function startApp(){
   if(!data){startMatching();return;}
   charData=data;bondLevel=data.bond||0;totalMsgs=data.total_msgs||0;chatDays=data.chat_days||0;
   applyProfile();switchTab('home');await loadMessages();requestNotifPermission();scheduleRandomPing();
+  restoreScheduleReminders();
 }
 function applyProfile(){
   const el=id=>document.getElementById(id);
@@ -1736,33 +1737,148 @@ async function addScheduleManual(){
 
 
 async function autoDetectSchedule(text){
-  // 날짜 패턴 감지
-  const datePattern=/(\d{1,2})월\s*(\d{1,2})일|내일|모레|다음\s*주/;
-  const schedulePattern=/약속|미팅|회의|예약|일정|방문|만남|행사|시험|발표/;
-  if(!datePattern.test(text)||!schedulePattern.test(text))return;
+  // 키워드 감지 - 확장
+  const schedulePattern=/약속|미팅|회의|예약|일정|방문|만남|행사|시험|발표|면접|모임|데이트|여행|출장|병원|수업|강의|세미나|콘서트|공연|결혼식|생일|기념일/;
+  const datePattern=/(\d{1,2})월\s*(\d{1,2})일|내일|모레|다음\s*주|이번\s*주|월요일|화요일|수요일|목요일|금요일|토요일|일요일|\d{4}[-./]\d{1,2}[-./]\d{1,2}/;
+  if(!schedulePattern.test(text)&&!datePattern.test(text))return;
+  if(!schedulePattern.test(text))return;
 
   try{
+    const today=new Date().toISOString().slice(0,10);
     const resp=await fetch('/api/chat',{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({messages:[
-        {role:'system',content:'대화에서 일정을 추출해서 JSON으로만 답해. 형식: {"title":"일정제목","date":"YYYY-MM-DD","content":"간단한 내용"} 일정이 없으면 null 반환'},
+        {role:'system',content:`오늘 날짜: ${today}
+대화에서 일정을 추출해서 JSON으로만 답해. 마크다운 없이 순수 JSON만.
+형식: {"title":"일정제목","date":"YYYY-MM-DD","time":"HH:MM","content":"간단한 내용"}
+- time이 언급 없으면 null
+- 일정이 없으면 null
+- 내일/모레 등 상대적 날짜는 오늘 기준으로 계산해서 절대 날짜로 변환`},
         {role:'user',content:text}
       ]})
     });
     const data=await resp.json();
     const raw=data.choices?.[0]?.message?.content?.trim();
     if(!raw||raw==='null')return;
-    const schedule=JSON.parse(raw);
+    const clean=raw.replace(/```json|```/g,'').trim();
+    const schedule=JSON.parse(clean);
     if(!schedule?.title||!schedule?.date)return;
+
+    // 날짜+시간 조합
+    const eventDate=schedule.time
+      ? new Date(`${schedule.date}T${schedule.time}:00`)
+      : new Date(`${schedule.date}T09:00:00`);
+
+    // 중복 체크 - 같은 날 같은 제목 있으면 스킵
+    const{data:existing}=await sb.from('schedules')
+      .select('id')
+      .eq('user_id',currentUser.id)
+      .eq('title',schedule.title)
+      .gte('event_date',schedule.date+'T00:00:00')
+      .lte('event_date',schedule.date+'T23:59:59')
+      .maybeSingle();
+    if(existing)return;
+
     await sb.from('schedules').insert({
       user_id:currentUser.id,
       title:schedule.title,
       content:schedule.content||'',
-      event_date:new Date(schedule.date).toISOString(),
+      event_date:eventDate.toISOString(),
       created_at:new Date().toISOString()
     });
-    showToast(`📅 일정 추가됐어: ${schedule.title}`);
-  }catch(e){}
+
+    const timeStr=schedule.time?` ${schedule.time}`:'';
+    showToast(`📅 일정 추가됐어: ${schedule.title} (${schedule.date}${timeStr})`);
+
+    // 일정 알림 스케줄 등록
+    scheduleEventReminder(schedule.title, eventDate, schedule.content||'');
+
+  }catch(e){console.error('일정 감지 오류:',e);}
+}
+
+function scheduleEventReminder(title, eventDate, content){
+  const now=Date.now();
+  const eventTime=eventDate.getTime();
+
+  // 2시간 전 알림
+  const twoHourBefore=eventTime-(2*60*60*1000);
+  if(twoHourBefore>now){
+    setTimeout(async()=>{
+      const msg=`야 ${title} 2시간 후야! 준비해야 하지 않아?`;
+      appendMsg('ai',msg);
+      messages.push({role:'assistant',content:msg,created_at:new Date().toISOString()});
+      await saveMsg('assistant',msg);
+      playPingSound();
+      // 푸시 알림
+      if(Notification.permission==='granted'){
+        try{
+          const reg=await navigator.serviceWorker.ready;
+          await reg.showNotification('톡다리 📅',{
+            body:msg,icon:'/icon.png',badge:'/icon.png',
+            vibrate:[300,100,300],tag:'schedule-reminder',renotify:true
+          });
+        }catch(e){}
+      }
+    },twoHourBefore-now);
+  }
+
+  // 1시간 전 알림
+  const oneHourBefore=eventTime-(1*60*60*1000);
+  if(oneHourBefore>now){
+    setTimeout(async()=>{
+      const msg=`${title} 1시간 전이야! 늦지 마`;
+      appendMsg('ai',msg);
+      messages.push({role:'assistant',content:msg,created_at:new Date().toISOString()});
+      await saveMsg('assistant',msg);
+      playPingSound();
+      if(Notification.permission==='granted'){
+        try{
+          const reg=await navigator.serviceWorker.ready;
+          await reg.showNotification('톡다리 📅',{
+            body:msg,icon:'/icon.png',badge:'/icon.png',
+            vibrate:[300,100,300],tag:'schedule-reminder',renotify:true
+          });
+        }catch(e){}
+      }
+    },oneHourBefore-now);
+  }
+
+  // 10분 전 알림
+  const tenMinBefore=eventTime-(10*60*1000);
+  if(tenMinBefore>now){
+    setTimeout(async()=>{
+      const msg=`${title} 10분 전이야!! 지금 바로 움직여`;
+      appendMsg('ai',msg);
+      messages.push({role:'assistant',content:msg,created_at:new Date().toISOString()});
+      await saveMsg('assistant',msg);
+      playPingSound();
+      if(Notification.permission==='granted'){
+        try{
+          const reg=await navigator.serviceWorker.ready;
+          await reg.showNotification('톡다리 ⏰',{
+            body:msg,icon:'/icon.png',badge:'/icon.png',
+            vibrate:[500,100,500,100,500],tag:'schedule-reminder',renotify:true
+          });
+        }catch(e){}
+      }
+    },tenMinBefore-now);
+  }
+}
+async function restoreScheduleReminders(){
+  if(!currentUser)return;
+  try{
+    const now=new Date().toISOString();
+    const in24h=new Date(Date.now()+24*60*60*1000).toISOString();
+    const{data}=await sb.from('schedules')
+      .select('*')
+      .eq('user_id',currentUser.id)
+      .gte('event_date',now)
+      .lte('event_date',in24h);
+    if(!data?.length)return;
+    data.forEach(s=>{
+      scheduleEventReminder(s.title,new Date(s.event_date),s.content||'');
+    });
+  }catch(e){console.error('일정 알림 복원 오류:',e);}
 }
   function showTerms(){
   const userId=currentUser?.id||'guest';

@@ -769,7 +769,24 @@ async function startWithCharacter(){
   charData={...CHARS['A'],bond:0,total_msgs:0,chat_days:0};
   document.getElementById('matching').classList.remove('show');
   const appEl=document.getElementById('app');appEl.classList.add('show');appEl.style.display='flex';
-  applyProfile();switchTab('home');setTimeout(()=>openChat(),600);
+  applyProfile();switchTab('home');
+  // 홈 화면에서 먼저 선톡처럼 알림 띄우고 채팅방 열기
+  setTimeout(async()=>{
+    showToast('다리에게 메시지가 왔어! 💬');
+    playPingSound();
+    if(Notification.permission==='granted'){
+      try{
+        const reg=await navigator.serviceWorker.ready;
+        await reg.showNotification('다리',{
+          body:'안녕! 나 다리야 😊 먼저 말 걸어봤어',
+          icon:'/icon.png',badge:'/icon.png',
+          vibrate:[300,100,300],
+          tag:'tokdari-first',renotify:true
+        });
+      }catch(e){}
+    }
+    setTimeout(()=>openChat(),1500);
+  },800);
 }
 
 // ══ 펭귄 SVG 생성 (카툰 스타일) ══
@@ -1100,14 +1117,36 @@ ${currentWeather?`현재 날씨: ${currentWeather.temp}°C ${currentWeather.desc
 }
 async function sendFirstMessage(){
   const ch=getChar();if(!ch)return;
-  const name=profile.name||'거기';const lv=getLevel();
-  let msgs;
-  if(ch.id==='A')msgs=[`${name}야!! 드디어 왔다ㅋㅋ 기다렸잖아`,`오 ${name} 왔어? 오늘 어땠어?`,`야야 ${name}! 나 할말있어ㅋㅋ`];
-  else if(ch.id==='B')msgs=[`...왔구나. 오늘 어때?`,`기다렸어. 밥은 먹었어?`,`${name} 왔어. 오늘 하루 어떻게 보냈어?`];
-  else msgs=[`${name}. 왔네. 오늘 뭔 일 있어?`,`어, 왔어? 오늘 생산적이었어?`,`왔어? 생각해볼 거 있는데 들어볼래?`];
-  if(lv===1&&totalMsgs===0)msgs=[`안녕. 나 ${charData?.char_name||ch.name}야. 잘 부탁해.`];
-  const msg=msgs[Math.floor(Math.random()*msgs.length)];
-  appendMsg('ai',msg);messages.push({role:'assistant',content:msg,created_at:new Date().toISOString()});await saveMsg('assistant',msg);
+  const name=profile.name||'거기';
+
+  // 처음 만남 - 순차적으로 2~3개 메시지 전송
+  const firstMsgs=[
+    `안녕! 나 다리야 😊`,
+    `${name}이랑 친구 하게 됐다ㅋㅋ 반가워`,
+    `뭐든 얘기해. 다 들어줄게`
+  ];
+
+  for(let i=0;i<firstMsgs.length;i++){
+    await new Promise(r=>setTimeout(r,1000+i*1200));
+    const msg=firstMsgs[i];
+    appendMsg('ai',msg);
+    messages.push({role:'assistant',content:msg,created_at:new Date().toISOString()});
+    await saveMsg('assistant',msg);
+  }
+
+  // 푸시 알림 + 알림음
+  playPingSound();
+  if(Notification.permission==='granted'){
+    try{
+      const reg=await navigator.serviceWorker.ready;
+      await reg.showNotification('다리',{
+        body:`${name}이랑 친구 하게 됐다ㅋㅋ 반가워`,
+        icon:'/icon.png',badge:'/icon.png',
+        vibrate:[300,100,300],
+        tag:'tokdari-first',renotify:true
+      });
+    }catch(e){}
+  }
 }
 let replyTimer = null;
 let pendingUserMsgs = [];

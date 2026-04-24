@@ -703,6 +703,7 @@ async function startApp(){
   await checkConsent();
     initSounds();
   initSounds();
+  fetchWeather();
   // 개인정보처리방침 미확인 시 자동 표시
   const userId=currentUser?.id||'guest';
   if(localStorage.getItem('td_privacy_done_'+userId)!=='1'){
@@ -1004,6 +1005,92 @@ async function saveMsg(role,content){
   }catch(e){console.error('saveMsg 오류:',e);}
 }
 let currentWeather = null;
+  let currentWeather = null;
+let currentLocation = null;
+
+async function fetchWeather(){
+  if(!navigator.geolocation)return;
+  try{
+    // 위치 가져오기
+    const pos=await new Promise((resolve,reject)=>
+      navigator.geolocation.getCurrentPosition(resolve,reject,{timeout:8000})
+    );
+    const{latitude:lat,longitude:lon}=pos.coords;
+    currentLocation={lat,lon};
+
+    // 역지오코딩 - 도시명 가져오기
+    let cityName='';
+    try{
+      const geoResp=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=ko`);
+      const geoData=await geoResp.json();
+      cityName=geoData.address?.city||geoData.address?.town||geoData.address?.county||geoData.address?.state||'';
+    }catch(e){}
+
+    // open-meteo 날씨 API
+    const weatherResp=await fetch(
+      `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&timezone=auto`
+    );
+    const weatherData=await weatherResp.json();
+    const curr=weatherData.current;
+    const temp=Math.round(curr.temperature_2m);
+    const humidity=curr.relative_humidity_2m;
+    const windSpeed=Math.round(curr.wind_speed_10m);
+    const code=curr.weather_code;
+
+    // 날씨 코드 → 한국어 설명
+    const weatherDesc=code<=1?'맑음':code<=3?'구름 조금':code<=48?'안개':
+      code<=55?'이슬비':code<=67?'비':code<=77?'눈':
+      code<=82?'소나기':code<=99?'뇌우':'흐림';
+
+    const weatherEmoji=code<=1?'☀️':code<=3?'⛅':code<=48?'🌫️':
+      code<=55?'🌦️':code<=67?'🌧️':code<=77?'❄️':
+      code<=82?'🌦️':code<=99?'⛈️':'☁️';
+
+    currentWeather={
+      temp,humidity,windSpeed,
+      desc:weatherDesc,
+      emoji:weatherEmoji,
+      city:cityName,
+      lat,lon
+    };
+
+    console.log('날씨 로드됨:',currentWeather);
+  }catch(e){
+    console.log('날씨 로드 실패:',e.message);
+    // 위치 권한 거부 시 IP 기반 폴백
+    try{
+      const ipResp=await fetch('https://ipapi.co/json/');
+      const ipData=await ipResp.json();
+      const lat=ipData.latitude;
+      const lon=ipData.longitude;
+      currentLocation={lat,lon};
+
+      const weatherResp=await fetch(
+        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&timezone=auto`
+      );
+      const weatherData=await weatherResp.json();
+      const curr=weatherData.current;
+      const temp=Math.round(curr.temperature_2m);
+      const code=curr.weather_code;
+      const weatherDesc=code<=1?'맑음':code<=3?'구름 조금':code<=48?'안개':
+        code<=55?'이슬비':code<=67?'비':code<=77?'눈':
+        code<=82?'소나기':code<=99?'뇌우':'흐림';
+      const weatherEmoji=code<=1?'☀️':code<=3?'⛅':code<=48?'🌫️':
+        code<=55?'🌦️':code<=67?'🌧️':code<=77?'❄️':
+        code<=82?'🌦️':code<=99?'⛈️':'☁️';
+
+      currentWeather={
+        temp,
+        humidity:curr.relative_humidity_2m,
+        windSpeed:Math.round(curr.wind_speed_10m),
+        desc:weatherDesc,
+        emoji:weatherEmoji,
+        city:ipData.city||'',
+        lat,lon
+      };
+    }catch(e2){console.log('IP 날씨도 실패:',e2.message);}
+  }
+}
     function buildPrompt(){
   const ch=getChar();if(!ch)return '';
   const lv=getLevel();
@@ -1019,7 +1106,7 @@ let currentWeather = null;
   return `너는 "${name}"의 친구 "다리"야.
 오늘 날짜: ${new Date().toLocaleDateString('ko-KR')}
 현재 친밀도: Lv.${lv} — ${intimacy}
-${currentWeather?`현재 날씨: ${currentWeather.temp}°C ${currentWeather.desc}`:''}
+${currentWeather?`현재 위치: ${currentWeather.city||'알 수 없음'} / 날씨: ${currentWeather.emoji}${currentWeather.desc} ${currentWeather.temp}°C / 습도: ${currentWeather.humidity}% / 바람: ${currentWeather.windSpeed}km/h`:'날씨 정보 없음 (위치 권한 필요)'}
 
 [성격]
 솔직하고 현실적이야. 할 말은 하고, 들을 땐 제대로 들어.

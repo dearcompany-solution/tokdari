@@ -1,5 +1,4 @@
-const{createClient}=require('@supabase/supabase-js');
-const sb=createClient(process.env.SUPABASE_URL,process.env.SUPABASE_SERVICE_KEY);
+const fetch=(...args)=>import('node-fetch').then(({default:f})=>f(...args));
 
 module.exports=async function handler(req,res){
   res.setHeader('Access-Control-Allow-Origin','*');
@@ -8,13 +7,13 @@ module.exports=async function handler(req,res){
   if(req.method==='OPTIONS')return res.status(200).end();
   if(req.method!=='POST')return res.status(405).end();
 
-  const{messages,date}=req.body;
+  const{messages,date,userName}=req.body;
   if(!messages?.length)return res.status(400).json({error:'메시지 없음'});
 
-  // 대화 내용 정리
+  // user/assistant 대화만 정리
   const conv=messages
     .filter(m=>m.role==='user'||m.role==='assistant')
-    .map(m=>`${m.role==='user'?'나':'다리'}: ${m.content}`)
+    .map(m=>`${m.role==='user'?(userName||'나'):'다리'}: ${m.content}`)
     .join('\n');
 
   try{
@@ -23,20 +22,21 @@ module.exports=async function handler(req,res){
       headers:{'Content-Type':'application/json','Authorization':`Bearer ${process.env.OPENAI_API_KEY}`},
       body:JSON.stringify({
         model:'gpt-4o',
-        max_tokens:800,
+        max_tokens:600,
+        temperature:0.7,
         messages:[
           {
             role:'system',
-            content:`너는 일기 작성 도우미야. 아래 대화 내용을 바탕으로 일기를 작성해줘.
+            content:`너는 일기 작성 도우미야. 아래는 ${userName||'나'}와 AI 친구 다리의 대화야.
+이 대화를 바탕으로 ${userName||'나'}의 시점에서 일기를 작성해줘.
 
 [작성 규칙]
 - 날짜: ${date}
-- 1인칭 시점으로 작성 (나는, 오늘은)
-- 대화 흐름 순서대로 자연스럽게 정리
-- 어떤 얘기를 나눴는지, 어떤 감정이었는지 담아줘
-- 너무 딱딱하지 않게, 일기처럼 편하게
-- 길이: 150~250자
-- 이모지 1~2개만 자연스럽게
+- 반드시 ${userName||'나'}의 1인칭 시점으로 작성 (나는, 오늘은)
+- ${userName||'나'}이 한 말과 경험 중심으로 작성
+- 다리(AI)의 말은 참고만 하고 내용 중심은 ${userName||'나'}의 이야기
+- 자연스러운 일기체로 150~250자
+- 이모지 1~2개만
 
 [응답 형식 - JSON만 반환, 다른 텍스트 없이]
 {

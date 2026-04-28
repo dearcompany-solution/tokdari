@@ -1842,23 +1842,46 @@ function scheduleRandomPing(){
 }
 // ══ 다이어리 ══
 async function autoSaveDiary(){
-  if(!messages.length||!currentUser)return;
+  if(!messages.length||!currentUser?.id)return;
   try{
     const today=new Date().toLocaleDateString('ko-KR');
+    const todayStr=new Date().toISOString().slice(0,10);
+
     // 오늘 이미 저장됐는지 확인
     const{data:existing}=await sb.from('diary')
       .select('id').eq('user_id',currentUser.id)
-      .gte('created_at',new Date().toISOString().slice(0,10))
+      .gte('created_at',todayStr+'T00:00:00')
+      .lte('created_at',todayStr+'T23:59:59')
       .maybeSingle();
-    if(existing)return; // 오늘 이미 저장됨
+    if(existing)return;
+
+    // 현재 유저 메시지만 필터링 (오늘 대화만)
+    const todayMsgs=messages.filter(m=>{
+      if(!m.created_at)return false;
+      return m.created_at.startsWith(todayStr);
+    });
+
+    // 최소 3개 이상 대화 있을 때만 저장
+    if(todayMsgs.length<3)return;
+
+    // user/assistant 역할 명확하게 변환
+    const cleanMsgs=todayMsgs.map(m=>({
+      role:m.role==='user'?'user':'assistant',
+      content:typeof m.content==='string'?m.content:''
+    })).filter(m=>m.content.length>0);
 
     const resp=await fetch('/api/summarize',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({messages,date:today})
+      body:JSON.stringify({
+        messages:cleanMsgs,
+        date:today,
+        userName:profile.name||'나'
+      })
     });
     if(!resp.ok)return;
     const r=await resp.json();
+    if(!r.summary)return;
     const text=(r.highlight?r.highlight+'\n\n':'')+r.summary;
     await sb.from('diary').insert({
       user_id:currentUser.id,
@@ -1866,6 +1889,7 @@ async function autoSaveDiary(){
       content:text,
       created_at:new Date().toISOString()
     });
+    console.log('다이어리 자동저장 완료');
   }catch(e){console.error('다이어리 자동저장 오류:',e);}
 }
 

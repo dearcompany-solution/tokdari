@@ -1024,20 +1024,27 @@ function goBackToHome(){
   updateCharDisplay();
 }
 async function loadMessages(){
-  if(!currentUser)return;
+  if(!currentUser?.id)return;
   try{
-    if(!currentUser?.id)return;
     const{data,error}=await sb.from('messages').select('*')
       .eq('user_id',currentUser.id)
       .order('created_at',{ascending:true})
       .limit(200);
     if(error){console.error('loadMessages 오류:',error.message);return;}
     if(data&&data.length>0){
-      messages=data.map(m=>({role:m.role,content:m.content,created_at:m.created_at}));
+      // 반드시 현재 유저 메시지만 필터링 (이중 안전장치)
+      const myMsgs=data.filter(m=>m.user_id===currentUser.id);
+      messages=myMsgs.map(m=>({
+        role:m.role==='user'?'user':'assistant',
+        content:m.content,
+        created_at:m.created_at,
+        user_id:m.user_id
+      }));
       renderAllMessages();
       setTimeout(scrollToBottom,100);
-      // 기존 대화에서 일정 자동 스캔 (백그라운드)
-      setTimeout(()=>scanMessagesForSchedules(data),2000);
+      setTimeout(()=>scanMessagesForSchedules(myMsgs),2000);
+    }else{
+      messages=[];
     }
   }catch(e){console.error('loadMessages catch:',e);}
 }

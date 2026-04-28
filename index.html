@@ -623,7 +623,7 @@ let messages=[],isLoading=false,trashMode=false;
 let currentTab='home',pendingMedia=null,pendingMediaList=[];
 let matchAnswers=[],matchStep=0,matchedChar=null;
 let bondLevel=0,totalMsgs=0,chatDays=0;
-function saveSession(p){try{localStorage.setItem('tdv3',JSON.stringify({id:String(p.id||''),name:String(p.name||''),email:String(p.email||''),auth_id:String(p.auth_id||''),char_id:String(p.char_id||''),char_name:String(p.char_name||'')}));}catch(e){}}
+function saveSession(p){try{localStorage.setItem('tdv3',JSON.stringify({id:String(p.id||''),name:String(p.name||''),email:String(p.email||''),auth_id:String(p.auth_id||''),char_id:String(p.char_id||''),char_name:String(p.char_name||''),lastTab:currentTab||'home'}));}catch(e){}}
 function loadSession(){try{return JSON.parse(localStorage.getItem('tdv3'));}catch{return null;}}
 function clearSession(){localStorage.removeItem('tdv3');}
 window.addEventListener('load',async()=>{
@@ -748,7 +748,12 @@ async function startApp(){
   const{data}=await sb.from('user_characters').select('*').eq('user_id',currentUser.id).maybeSingle();
   if(!data){startMatching();return;}
   charData=data;bondLevel=data.bond||0;totalMsgs=data.total_msgs||0;chatDays=data.chat_days||0;
-  applyProfile();switchTab('home');await loadMessages();requestNotifPermission();scheduleRandomPing();
+  applyProfile();
+  // 마지막 탭 복원
+  const savedSession=loadSession();
+  const lastTab=savedSession?.lastTab||'home';
+  switchTab(lastTab);
+  await loadMessages();requestNotifPermission();scheduleRandomPing();
   restoreScheduleReminders();
 }
 function applyProfile(){
@@ -1002,6 +1007,8 @@ function switchTab(tab){
   if(tab==='home')updateCharDisplay();
   if(tab==='diary')loadDiary();
   if(tab==='calendar')loadCalendar();
+  // 현재 탭 저장
+  try{const s=loadSession();if(s){s.lastTab=tab;localStorage.setItem('tdv3',JSON.stringify(s));}}catch(e){}
 }
 async function openChat(){
   document.getElementById('chat-screen').classList.add('active');

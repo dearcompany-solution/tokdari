@@ -1050,8 +1050,11 @@ async function loadMessages(){
 }
 
 async function scanMessagesForSchedules(msgData){
-  if(!msgData?.length)return;
-  if(!currentUser?.id)return;
+  const uid=safeUserId();
+  if(!uid||!msgData?.length)return;
+  // 반드시 현재 유저 메시지만
+  msgData=msgData.filter(m=>m.user_id===uid);
+  if(!msgData.length)return;
   try{
     // 반드시 현재 로그인한 유저 메시지만 필터링
     const userMsgs=msgData.filter(m=>
@@ -1112,7 +1115,7 @@ async function scanMessagesForSchedules(msgData){
 
         // DB 저장
         const{error}=await sb.from('schedules').insert({
-          user_id:currentUser.id,
+      user_id:uid,
           title:schedule.title,
           content:schedule.content||'',
           event_date:eventDateObj.toISOString(),
@@ -1138,14 +1141,11 @@ async function scanMessagesForSchedules(msgData){
   }catch(e){console.error('scanMessagesForSchedules 오류:',e);}
 }
 async function saveMsg(role,content){
-  if(!currentUser)return;
-  // 쓰레기통 모드면 저장 안 함
-  if(trashMode)return;
+  const uid=safeUserId();
+  if(!uid||trashMode)return;
   try{
     const{error}=await sb.from('messages').insert({
-      user_id:currentUser.id,
-      role,
-      content,
+      user_id:uid,role,content,
       created_at:new Date().toISOString()
     });
     if(error)console.error('저장오류:',error.message);
@@ -1849,7 +1849,9 @@ function scheduleRandomPing(){
 }
 // ══ 다이어리 ══
 async function autoSaveDiary(){
-  if(!messages.length||!currentUser?.id)return;
+  const uid=safeUserId();
+  if(!uid||!messages.length)return;
+  if(uid!==currentUser.id){console.error('안전장치: diary 저장 차단');return;}
   try{
     const today=new Date().toLocaleDateString('ko-KR');
     const todayStr=new Date().toISOString().slice(0,10);
@@ -2088,6 +2090,8 @@ async function autoDetectSchedule(text){
   if(!schedulePattern.test(text))return;
 
   try{
+    const uid=safeUserId();
+    if(!uid)return;
     const today=new Date();
     const todayStr=today.toISOString().slice(0,10);
     const tomorrow=new Date(today);tomorrow.setDate(today.getDate()+1);
@@ -2423,6 +2427,23 @@ function initTheme(){
   applyTheme(isLight);
   const tog=document.getElementById('toggle-theme');
   if(tog&&isLight)tog.classList.add('on');
+}
+  // ── DB 안전장치 - 반드시 로그인된 유저 ID로만 쓰기 ──
+function safeUserId(){
+  if(!currentUser?.id){
+    console.error('안전장치: currentUser 없음 - DB 쓰기 차단');
+    return null;
+  }
+  return currentUser.id;
+}
+function safeInsert(table, data){
+  const uid=safeUserId();
+  if(!uid)return Promise.resolve({error:'유저 없음'});
+  if(data.user_id && data.user_id!==uid){
+    console.error(`안전장치: user_id 불일치 차단 (${table})`);
+    return Promise.resolve({error:'user_id 불일치'});
+  }
+  return sb.from(table).insert({...data,user_id:uid});
 }
   function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
 </script>

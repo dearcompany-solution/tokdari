@@ -1477,9 +1477,9 @@ async function sendMessage(){
   // 기존 타이머 초기화 (연속 입력 감지)
   if(replyTimer) clearTimeout(replyTimer);
 
-  // 메시지 길이에 따라 대기 시간 결정
+  // 메시지 길이에 따라 대기 시간 결정 (2초 대기 - 이어서 보낼 수 있게)
   const totalLength = pendingUserMsgs.join('').length;
-  const waitTime=300;
+  const waitTime=2000;
 
   // 입력이 멈추면 대기 후 답장
   replyTimer = setTimeout(async()=>{

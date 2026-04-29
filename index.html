@@ -826,10 +826,13 @@ function renderMatchQ(){
   const chEl=document.getElementById('match-choices');
   if(q.scene){scEl.style.display='block';scEl.textContent=q.scene;qEl.style.display='block';qEl.textContent=q.real_q;}
   else{scEl.style.display='none';qEl.style.display='block';qEl.textContent=q.q;}
-  chEl.innerHTML=q.choices.map(c=>`<button class="match-choice" onclick="matchPick('${c.val}',this)">${c.text}</button>`).join('');
+  chEl.innerHTML=q.choices.map((c,i)=>`<button class="match-choice" id="mc-${i}" onclick="matchPick('${c.val}','mc-${i}')">${c.text}</button>`).join('');
 }
-function matchPick(val,el){
-  document.querySelectorAll('.match-choice').forEach(b=>b.classList.remove('selected'));el.classList.add('selected');matchAnswers.push(val);
+function matchPick(val,elId){
+  document.querySelectorAll('.match-choice').forEach(b=>b.classList.remove('selected'));
+  const el=typeof elId==='string'?document.getElementById(elId):elId;
+  if(el)el.classList.add('selected');
+  matchAnswers.push(val);
   setTimeout(()=>{matchStep++;if(matchStep<MATCH_Qs.length)renderMatchQ();else showMatchResult();},350);
 }
 function showMatchResult(){

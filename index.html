@@ -1501,17 +1501,30 @@ async function callGPT(){
     },15000+Math.random()*30000);return;
   }
   document.getElementById('chat-status').textContent='읽음';
-try{
-  const resp=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'system',content:buildPrompt()},...messages.slice(-30).map(m=>({role:m.role==='ai'?'assistant':m.role,content:typeof m.content==='string'?m.content:JSON.stringify(m.content)}))]})});
-  document.getElementById('chat-status').textContent='입력 중...';
+  // ✅ fetch 전에 타이핑 버블 먼저 표시 → 즉각 반응처럼 느껴짐
   const typId=showTyping();
-  await new Promise(r=>setTimeout(r,150));
-  removeTyping(typId);
+  let typRemoved=false;
+  try{
+    const resp=await fetch('/api/chat',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({messages:[{role:'system',content:buildPrompt()},...messages.slice(-20).map(m=>({role:m.role==='ai'?'assistant':m.role,content:typeof m.content==='string'?m.content:JSON.stringify(m.content)}))]})
+    });
+    removeTyping(typId);typRemoved=true;
+    document.getElementById('chat-status').textContent='입력 중...';
     if(!resp.ok){appendMsg('ai','앗 오류났어 다시 해봐');}
-    else{const data=await resp.json();const reply=data.choices?.[0]?.message?.content?.trim()||'응';appendMsg('ai',reply);messages.push({role:'assistant',content:reply,created_at:new Date().toISOString()});await saveMsg('assistant',reply);}
-  }catch(e){removeTyping(typId);appendMsg('ai','인터넷 확인해봐');}
-  // 10번 대화마다 자동 다이어리 저장
-if(totalMsgs>0 && totalMsgs%10===0) autoSaveDiary();
+    else{
+      const data=await resp.json();
+      const reply=data.choices?.[0]?.message?.content?.trim()||'응';
+      appendMsg('ai',reply);
+      messages.push({role:'assistant',content:reply,created_at:new Date().toISOString()});
+      await saveMsg('assistant',reply);
+    }
+  }catch(e){
+    if(!typRemoved)removeTyping(typId);
+    appendMsg('ai','인터넷 확인해봐');
+  }
+  if(totalMsgs>0&&totalMsgs%10===0)autoSaveDiary();
   isLoading=false;document.getElementById('chat-status').textContent='온라인';
 }
 function appendMsg(role,content,imgSrc,silent=false){

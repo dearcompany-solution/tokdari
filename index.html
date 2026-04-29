@@ -1043,7 +1043,35 @@ async function updateBond(){
   bondLevel=Math.min(bondLevel+1,100);totalMsgs++;
   const today=new Date().toDateString();const lastDay=localStorage.getItem('td_last_day');
   if(lastDay!==today){chatDays++;localStorage.setItem('td_last_day',today);}
-  await sb.from('user_characters').update({bond:bondLevel,total_msgs:totalMsgs,chat_days:chatDays,updated_at:new Date().toISOString()}).eq('user_id',currentUser.id);
+
+  // 유저 말투 분석 (최근 20개 유저 메시지 기준)
+  const userMsgs=messages.filter(m=>m.role==='user').slice(-20).map(m=>m.content||'');
+  const allText=userMsgs.join(' ');
+  const avgLen=userMsgs.length>0?allText.length/userMsgs.length:0;
+  const hour=new Date().getHours();
+  const pd=charData?.personality_data||{};
+
+  const newPd={
+    ...pd,
+    talksLong:   avgLen>30,                                          // 길게 말하는 편
+    talksShort:  avgLen<10,                                          // 짧게 말하는 편
+    usesEmoji:   /[\u{1F300}-\u{1FFFF}]/u.test(allText),            // 이모지 사용
+    usesSlang:   /ㅋㅋ|ㅠㅠ|ㅎㅎ|ㄹㅇ|ㅇㅇ|ㄴㄴ|ㅜㅜ/.test(allText), // 줄임말 사용
+    likesHumor:  /ㅋㅋ|ㅎㅎ|웃|ㄱㄱ|ㄹㅇㅋ|재밌|신나/.test(allText),  // 유머 선호
+    likesSerious:/힘들|진지|고민|우울|슬퍼|외로|모르겠|걱정/.test(allText), // 진지한 대화 선호
+    likesInfo:   /알려줘|찾아봐|뭐야|어떻게|왜|언제|정보/.test(allText),   // 정보 추구형
+    nightOwl:    hour>=23||hour<4,                                   // 밤에 주로 대화
+    updatedAt:   new Date().toISOString()
+  };
+
+  charData={...charData,personality_data:newPd};
+  await sb.from('user_characters').update({
+    bond:bondLevel,
+    total_msgs:totalMsgs,
+    chat_days:chatDays,
+    personality_data:newPd,
+    updated_at:new Date().toISOString()
+  }).eq('user_id',currentUser.id);
   updateCharDisplay();
 }
 function switchTab(tab){
@@ -1306,9 +1334,24 @@ async function fetchWeather(){
   );
   const knownName = userMentionedName ? name : null;
 
+  // personality_data에서 학습된 스타일 읽기
+  const pd = charData?.personality_data || {};
+  const styleHint = [];
+  if(pd.talksLong)    styleHint.push('이 사람은 길게 말하는 편이야. 나도 조금 더 풀어서 답해.');
+  if(pd.talksShort)   styleHint.push('이 사람은 짧게 말해. 나도 더 짧게 끊어서 답해.');
+  if(pd.usesEmoji)    styleHint.push('이 사람은 이모지 자주 써. 나도 가끔 써도 돼.');
+  if(pd.usesSlang)    styleHint.push('이 사람은 ㅋㅋ ㅠㅠ 같은 줄임말 자주 써. 나도 자연스럽게 써.');
+  if(pd.likesHumor)   styleHint.push('이 사람은 웃긴 거 좋아해. 가볍게 장난쳐도 돼.');
+  if(pd.likesSerious) styleHint.push('이 사람은 진지한 대화 선호해. 장난 줄이고 공감 위주로.');
+  if(pd.likesInfo)    styleHint.push('이 사람은 정보나 팩트 좋아해. 물어보면 정확하게 답해.');
+  if(pd.nightOwl)     styleHint.push('이 사람은 늦은 밤에 자주 대화해. 분위기 맞춰서 조용하게.');
+  const styleStr = styleHint.length > 0
+    ? `\n[학습된 대화 스타일]\n${styleHint.join('\n')}`
+    : '';
+
   return `너는 "다리"야. 상대방 친구로 대화하는 중이야.
 오늘 날짜: ${new Date().toLocaleDateString('ko-KR')}
-현재 친밀도: Lv.${lv} — ${intimacy}
+현재 친밀도: Lv.${lv} — ${intimacy}${styleStr}
 ${knownName
   ? `상대방 이름: ${knownName} (상대방이 직접 말해줬어. 자연스럽게 가끔 불러도 돼.)`
   : `상대방 이름: 모름 (상대가 알려주기 전까지 이름 절대 부르지 마. "친구야" "야" 같은 말도 쓰지 마.)`

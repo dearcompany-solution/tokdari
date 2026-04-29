@@ -679,8 +679,31 @@ function clearSession(){localStorage.removeItem('tdv3');}
 window.addEventListener('load',async()=>{
   if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
   const saved=loadSession();
-  if(saved?.id){profile=saved;currentUser={id:saved.id, auth_id:saved.auth_id};await startApp();}
-  else{hideSplash();showLogin();}
+  if(saved?.id){
+    profile=saved;
+    currentUser={id:saved.id,auth_id:saved.auth_id};
+    await startApp();
+  } else {
+    // 로컬스토리지 없어도 Supabase 세션으로 복원 시도
+    try{
+      const{data:sessionData}=await sb.auth.getSession();
+      if(sessionData?.session?.user){
+        const authUser=sessionData.session.user;
+        const{data:prof}=await sb.from('profiles')
+          .select('*')
+          .eq('auth_id',authUser.id)
+          .maybeSingle();
+        if(prof){
+          profile=prof;
+          currentUser={id:prof.id,auth_id:prof.auth_id};
+          saveSession({...prof,token:sessionData.session.access_token});
+          await startApp();
+          return;
+        }
+      }
+    }catch(e){console.log('세션 복원 실패:',e);}
+    hideSplash();showLogin();
+  }
 });
 function hideSplash(){setTimeout(()=>{const s=document.getElementById('splash');if(s)s.style.display='none';},600);}
 function showLogin(){document.getElementById('login-screen').classList.add('show');document.getElementById('signup-screen').classList.remove('show');}

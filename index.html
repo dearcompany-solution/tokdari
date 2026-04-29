@@ -813,6 +813,7 @@ function applyProfile(){
   updateCharDisplay();
 }
 function startMatching(){
+  if(!currentUser?.id){showLogin();return;}
   matchedChar=CHARS['A'];
   document.getElementById('app').classList.remove('show');
   document.getElementById('matching').classList.add('show');
@@ -848,6 +849,11 @@ function showMatchResult(){
 }
 async function startWithCharacter(){
   if(!matchedChar)matchedChar=CHARS['A'];
+  if(!currentUser?.id){
+    showToast('로그인이 필요해!');
+    setTimeout(()=>{document.getElementById('matching').classList.remove('show');showLogin();},1000);
+    return;
+  }
   showToast('친구 만드는 중...');
   const{error}=await sb.from('user_characters').insert({
     user_id:currentUser.id,

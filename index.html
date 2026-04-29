@@ -771,7 +771,7 @@ async function doLoginWith(email,password,errEl){
   const r=await fetch('/api/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'login',email,password})});
   const res=await r.json();
   if(!r.ok){if(errEl)errEl.textContent=res.error||'로그인 실패ㅠ';return;}
-  profile=res.profile;currentUser={id:res.profile.id};
+  profile=res.profile;currentUser={id:res.profile.id, auth_id:res.profile.auth_id};
   saveSession({...res.profile,token:res.token});
   if(errEl)errEl.textContent='';
   hideSplash();await startApp();

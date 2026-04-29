@@ -2043,21 +2043,25 @@ async function loadDiary(){
     });
 
     body.innerHTML=Object.entries(groups).map(([dateKey,entries])=>`
-      <div style="margin-bottom:4px">
-        <div style="font-size:.72rem;color:var(--text3);font-weight:700;letter-spacing:.04em;padding:0 4px;margin-bottom:6px">${dateKey}</div>
+      <div style="margin-bottom:16px">
+        <div style="font-size:.72rem;color:var(--text3);font-weight:700;letter-spacing:.04em;padding:0 4px;margin-bottom:8px;display:flex;align-items:center;gap:6px">
+          <div style="flex:1;height:1px;background:var(--divider)"></div>
+          <span>${dateKey}</span>
+          <div style="flex:1;height:1px;background:var(--divider)"></div>
+        </div>
         ${entries.map(d=>{
           const parts=d.content?.split('\n\n')||[];
           const highlight=parts.length>1?parts[0]:'';
           const summary=parts.length>1?parts.slice(1).join('\n\n'):parts[0]||'';
-          return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:1rem;margin-bottom:8px">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-              <span style="font-size:1.6rem">${d.mood||'😊'}</span>
+          return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:1.2rem;margin-bottom:10px;position:relative">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+              <span style="font-size:2rem">${d.mood||'😊'}</span>
               <div style="flex:1">
-                ${highlight?`<div style="font-size:.82rem;font-weight:700;color:var(--text)">${highlight}</div>`:''}
-                <div style="font-size:.72rem;color:var(--text3);margin-top:2px">${new Date(d.created_at).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})}</div>
+                ${highlight?`<div style="font-size:.9rem;font-weight:700;color:var(--text);line-height:1.4">${highlight}</div>`:''}
+                <div style="font-size:.7rem;color:var(--text3);margin-top:3px">${new Date(d.created_at).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})} 기록</div>
               </div>
             </div>
-            <div style="font-size:.84rem;color:var(--text2);line-height:1.8;white-space:pre-wrap;border-top:1px solid var(--divider);padding-top:10px">${summary}</div>
+            <div style="font-size:.88rem;color:var(--text);line-height:2;white-space:pre-wrap;border-top:1px solid var(--divider);padding-top:12px;font-family:'Noto Sans KR',sans-serif">${summary}</div>
           </div>`;
         }).join('')}
       </div>

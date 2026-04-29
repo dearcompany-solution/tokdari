@@ -93,7 +93,7 @@ module.exports = async function handler(req, res) {
     }
   }
 
-  // ── 비밀번호 변경 (로그인 상태) ── ✅ 신규 추가
+  // ── 비밀번호 변경 (로그인 상태) ──
   if (action === 'changePassword') {
     const { authId, currentPassword, newPassword } = req.body;
     if (!authId || !currentPassword || !newPassword) {
@@ -103,10 +103,10 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: '새 비밀번호는 6자리 이상이어야 해' });
     }
     try {
-      // 현재 비밀번호 확인을 위해 이메일 조회
+      // profiles.id(PK) 또는 auth_id 둘 다 시도
       const { data: profile, error: profileErr } = await sb.from('profiles')
-        .select('email')
-        .eq('auth_id', authId)
+        .select('email, auth_id')
+        .or(`id.eq.${authId},auth_id.eq.${authId}`)
         .maybeSingle();
       if (profileErr || !profile) return res.status(404).json({ error: '유저를 찾을 수 없어' });
 

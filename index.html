@@ -1751,14 +1751,8 @@ async function uploadImage(file){
     });
 
     if(error){
-      console.error('업로드 실패:',error.message);
-      if(error.message.includes('Bucket not found')||error.message.includes('bucket')){
-        showToast('스토리지 버킷 없음 - Supabase에 chat-images 버킷 만들어줘');
-      } else if(error.message.includes('security')||error.message.includes('policy')){
-        showToast('권한 오류 - Supabase Storage 정책 확인해줘');
-      } else {
-        showToast('업로드 실패: '+error.message);
-      }
+      console.error('업로드 실패 상세:',JSON.stringify(error));
+      showToast('업로드 실패: '+error.message);
       return null;
     }
 
@@ -1773,8 +1767,11 @@ async function uploadImage(file){
   }
 }
 function handleMedia(e){
-  // 모바일 카메라 촬영 시 type이 빈 문자열로 오는 경우 대비
-  const files=Array.from(e.target.files||[]).filter(f=>f.type.startsWith('image/')||f.type===''||f.name?.match(/\.(jpg|jpeg|png|gif|webp|heic)$/i));
+  const files=Array.from(e.target.files||[]).filter(f=>
+    f.type.startsWith('image/')||
+    f.type===''||
+    /\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name||'')
+  );
   if(!files.length){showToast('이미지 파일만 보낼 수 있어!');return;}
   if(files.length>5){showToast('한 번에 최대 5장까지만 보낼 수 있어!');files.splice(5);}
   pendingMediaList=[];

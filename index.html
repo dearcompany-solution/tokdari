@@ -323,7 +323,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Noto San
         <textarea id="msg-input" placeholder="메시지 입력..." rows="1" oninput="autoResize(this)"></textarea>
       </div>
       <button class="attach-btn" onclick="toggleEmojiPanel()">😊</button>
-      <button class="send-btn" onclick="sendMessage()">↑</button>
+      <button class="send-btn" id="send-btn" onmousedown="event.preventDefault()" onclick="sendMessage();document.getElementById('msg-input').focus()">↑</button>
     </div>
   </div>
   <div id="tab-content">
@@ -1689,27 +1689,38 @@ function removeTyping(id){document.getElementById(id)?.remove();}
 function scrollToBottom(){const w=document.getElementById('chat-messages');if(w)w.scrollTop=w.scrollHeight;}
 function autoResize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,120)+'px';}
 document.addEventListener('DOMContentLoaded',()=>{
-  const ta=document.getElementById('msg-input');if(!ta)return;let composing=false;
+  const ta=document.getElementById('msg-input');if(!ta)return;
+  let composing=false;
   ta.addEventListener('compositionstart',()=>{composing=true;});
   ta.addEventListener('compositionend',()=>{composing=false;});
   ta.addEventListener('keydown',e=>{
     if(e.key==='Enter'&&!e.shiftKey&&!composing){
       e.preventDefault();
       sendMessage();
-      // 모바일 키보드 유지
-      setTimeout(()=>ta.focus(),50);
+      setTimeout(()=>ta.focus(),30);
     }
   });
-  // 모바일 — 포커스 아웃 방지
+
+  // 모바일 전송 버튼 — touchstart에서 포커스 유지
+  const sendBtn=document.getElementById('send-btn');
+  if(sendBtn){
+    sendBtn.addEventListener('touchstart',e=>{
+      e.preventDefault(); // 기본 blur 방지
+      sendMessage();
+      setTimeout(()=>ta.focus(),30);
+    },{passive:false});
+  }
+
+  // 모바일 blur 방지 — 채팅창 열려있을 때만
   ta.addEventListener('blur',()=>{
-    // 전송 버튼 클릭이 아닌 경우에만 재포커스
     setTimeout(()=>{
+      const chatOpen=document.getElementById('chat-screen')?.classList.contains('show');
       const active=document.activeElement;
-      if(active&&active.id==='send-btn')return;
-      if(document.getElementById('chat-screen')?.classList.contains('show')){
+      const isBtn=active?.tagName==='BUTTON'||active?.tagName==='INPUT';
+      if(chatOpen&&!isBtn){
         ta.focus();
       }
-    },100);
+    },150);
   });
 });
 function showChatNotice(msg){

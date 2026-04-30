@@ -23,6 +23,17 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Noto San
   /* iOS Safari 키보드 대응 */
   #app{height:-webkit-fill-available;}
   .chat-input-wrap{padding-bottom:env(safe-area-inset-bottom);}
+  #chat-screen{
+    height:100dvh; /* dynamic viewport height — 키보드 올라와도 헤더 고정 */
+    top:0;
+    position:fixed;
+  }
+  .app-header{
+    position:sticky;
+    top:0;
+    z-index:10;
+    flex-shrink:0;
+  }
 }
 #splash{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:999}
 #splash h1{font-size:2rem;font-weight:700;background:linear-gradient(135deg,var(--accent2),var(--pink));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
@@ -59,12 +70,12 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Noto San
 .match-char-desc{font-size:.85rem;color:var(--text2);line-height:1.7}
 #app{position:fixed;inset:0;display:none;flex-direction:column}
 #app.show{display:flex}
-#chat-screen{position:fixed;inset:0;display:none;flex-direction:column;background:var(--bg);z-index:50}
+#chat-screen{position:fixed;inset:0;display:none;flex-direction:column;background:var(--bg);z-index:50;overflow:hidden}
 #chat-screen.active{display:flex}
 #tab-content{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0}
 .tab-screen{display:none;flex-direction:column;flex:1;overflow:hidden;min-height:0}
 .tab-screen.active{display:flex}
-.app-header{background:var(--bg2);border-bottom:1px solid var(--divider);padding:.8rem 1rem;display:flex;align-items:center;gap:10px;flex-shrink:0}
+.app-header{background:var(--bg2);border-bottom:1px solid var(--divider);padding:.8rem 1rem;display:flex;align-items:center;gap:10px;flex-shrink:0;position:sticky;top:0;z-index:10}
 .hdr-title{font-size:1.05rem;font-weight:700}
 .hbtn{background:none;border:none;color:var(--text2);font-size:1.2rem;cursor:pointer;padding:6px;border-radius:8px}
 .header-actions{margin-left:auto;display:flex;gap:2px}

@@ -1547,7 +1547,11 @@ async function sendMessage(){
     for(const media of mediaSnapshot){
       appendMsg('user','',media.preview);
       const imgUrl=await uploadImage(media.file);
-      const content=imgUrl?`[이미지] ${imgUrl}`:`[사진] (업로드 실패)`;
+      if(!imgUrl){
+        showChatNotice('사진 저장 실패 — 다시 시도해봐');
+        continue;
+      }
+      const content=`[이미지] ${imgUrl}`;
       messages.push({role:'user',content,created_at:new Date().toISOString()});
       await saveMsg('user',content);
     }
@@ -1754,7 +1758,8 @@ async function uploadImage(file){
   }
 }
 function handleMedia(e){
-  const files=Array.from(e.target.files||[]).filter(f=>f.type.startsWith('image/'));
+  // 모바일 카메라 촬영 시 type이 빈 문자열로 오는 경우 대비
+  const files=Array.from(e.target.files||[]).filter(f=>f.type.startsWith('image/')||f.type===''||f.name?.match(/\.(jpg|jpeg|png|gif|webp|heic)$/i));
   if(!files.length){showToast('이미지 파일만 보낼 수 있어!');return;}
   if(files.length>5){showToast('한 번에 최대 5장까지만 보낼 수 있어!');files.splice(5);}
   pendingMediaList=[];

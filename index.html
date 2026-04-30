@@ -19,6 +19,11 @@
 :root.light{--bg:#f5f5ff;--bg2:#ffffff;--bg3:#eeeeff;--accent:#7c3aed;--accent2:#6d28d9;--pink:#ec4899;--text:#1a1a2e;--text2:#44446a;--text3:#8888aa;--bubble-ai:#ede9fe;--bubble-user:#7c3aed;--border:rgba(124,58,237,0.25);--green:#16a34a;--divider:rgba(0,0,0,0.08)}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Noto Sans KR',sans-serif;color:var(--text)}
+@supports (-webkit-touch-callout: none){
+  /* iOS Safari 키보드 대응 */
+  #app{height:-webkit-fill-available;}
+  .chat-input-wrap{padding-bottom:env(safe-area-inset-bottom);}
+}
 #splash{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:999}
 #splash h1{font-size:2rem;font-weight:700;background:linear-gradient(135deg,var(--accent2),var(--pink));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 #splash p{font-size:.85rem;color:var(--text3)}
@@ -681,10 +686,12 @@ window.addEventListener('load',async()=>{
     // 기존 서비스워커 캐시 강제 갱신
     navigator.serviceWorker.register('sw.js').catch(()=>{});
     try{
-      const regs=await navigator.serviceWorker.getRegistrations();
-      for(const reg of regs){
-        const cache=await caches.keys();
-        for(const key of cache)await caches.delete(key);
+      // 캐시는 앱 버전 바뀔 때만 삭제 (매번 삭제 금지 - 모바일 느려짐)
+      const appVersion='v1.0.3';
+      if(localStorage.getItem('td_cache_ver')!==appVersion){
+        const keys=await caches.keys();
+        for(const key of keys)await caches.delete(key);
+        localStorage.setItem('td_cache_ver',appVersion);
       }
     }catch(e){}
   }
@@ -816,8 +823,7 @@ async function startApp(){
   const appEl=document.getElementById('app');appEl.classList.add('show');appEl.style.display='flex';
   hideSplash();
   await checkConsent();
-    initTheme();  
-    initSounds();
+    initTheme();
   initSounds();
   fetchWeather();
   // 개인정보처리방침 미확인 시 자동 표시
@@ -1498,12 +1504,9 @@ ${currentWeather?`현재 위치: ${currentWeather.city||'알 수 없음'} / 날�
 }
 async function sendFirstMessage(){
   const ch=getChar();if(!ch)return;
-  const name=profile.name||'거기';
-
-  // 처음 만남 - 순차적으로 2~3개 메시지 전송
   const firstMsgs=[
     `안녕! 나 다리야 😊`,
-    `${name}이랑 친구 하게 됐다ㅋㅋ 반가워`,
+    `친구 하게 됐다ㅋㅋ 반가워`,
     `뭐든 얘기해. 다 들어줄게`
   ];
 
@@ -2474,7 +2477,7 @@ async function confirmConsent(){
       const now=new Date().toISOString();
       let{error}=await sb.from('profiles')
         .update({agreed_at:now})
-        .eq('auth_id',currentUser.id);
+        .eq('id',currentUser.id);
       if(error){
         const{error:e2}=await sb.from('profiles')
           .update({agreed_at:now})

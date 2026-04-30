@@ -338,7 +338,6 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Noto San
           <div id="char-svg-wrap" style="width:140px;height:140px;display:flex;align-items:center;justify-content:center"></div>
         </div>
         <div class="char-name-disp" id="char-name-disp">??</div>
-        <div class="char-type-disp" id="char-type-disp"></div>
         <div class="char-level-disp" id="char-level-disp">Lv.1 · 새싹</div>
         <div class="bond-wrap">
           <div class="bond-label"><span>친밀도</span><span id="bond-percent">0%</span></div>
@@ -1048,7 +1047,7 @@ function updateCharDisplay(){
   }
   if(el('chat-char-icon'))el('chat-char-icon').textContent=ch.icons[Math.min(lv-1,ch.icons.length-1)]||'🐧';
   if(el('char-name-disp'))el('char-name-disp').textContent=name;
-  if(el('char-type-disp'))el('char-type-disp').textContent=ch.type;
+  
   if(el('char-level-disp'))el('char-level-disp').textContent=`Lv.${lv} · ${getLvName(lv)}`;
   if(el('chat-char-name'))el('chat-char-name').textContent=name;
   if(el('stat-msgs'))el('stat-msgs').textContent=totalMsgs;
@@ -1082,8 +1081,8 @@ function updateCharDisplay(){
     '오늘은 왕이야 👑',
     '오늘은 무지개 기분이야 🌈',
   ];
+  // 오늘의 코멘트는 별도 요소에만 표시 (char-type-disp 덮어쓰기 제거)
   const seed2=new Date().getDate()%todayComments.length;
-  if(el('char-type-disp'))el('char-type-disp').textContent=todayComments[seed2];
   if(el('today-text'))el('today-text').textContent=todayMsgs[Math.floor(Math.random()*todayMsgs.length)];
   if(el('chat-btn-text'))el('chat-btn-text').textContent=messages.length>0?'계속 대화하기':'대화하기';
 }

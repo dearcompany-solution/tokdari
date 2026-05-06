@@ -1615,18 +1615,15 @@ async function sendMessage(){
   // 기존 타이머 초기화 (연속 입력 감지)
   if(replyTimer) clearTimeout(replyTimer);
 
-  // 메시지 길이에 따라 대기 시간 결정 (2초 대기 - 이어서 보낼 수 있게)
-  const totalLength = pendingUserMsgs.join('').length;
-  const waitTime=2000;
-
-  // 입력이 멈추면 대기 후 답장
+  // 15초 대기 — 여러 말풍선 다 보낼 때까지 기다렸다가 전체 맥락으로 답장
   replyTimer = setTimeout(async()=>{
     if(isLoading)return;
+    const combinedMsgs = pendingUserMsgs.slice(); // 쌓인 메시지 전체 복사
     pendingUserMsgs = [];
-    await callGPT();
-  }, waitTime);
+    await callGPT(combinedMsgs);
+  }, 15000);
 }
-async function callGPT(){
+async function callGPT(combinedMsgs=[]){
   if(isLoading)return;isLoading=true;const ch=getChar();
   if(ch&&Math.random()<ch.ignore){
     document.getElementById('chat-status').textContent='읽음';isLoading=false;
@@ -1646,19 +1643,26 @@ async function callGPT(){
     const resp=await fetch('/api/chat',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({messages:[{role:'system',content:buildPrompt()},...messages.slice(-20).map(m=>{
-        const role=m.role==='ai'?'assistant':m.role;
-        const content=m.content||'';
-        // 이미지 URL 포함된 메시지면 vision 형식으로 변환
-        if(typeof content==='string'&&content.startsWith('[이미지] ')){
-          const url=content.replace('[이미지] ','').trim();
-          return {role,content:[
-            {type:'image_url',image_url:{url,detail:'auto'}},
-            {type:'text',text:'(사진을 보냈어)'}
-          ]};
-        }
-        return {role,content:typeof content==='string'?content:JSON.stringify(content)};
-      })]})
+      body:JSON.stringify({messages:[
+        {role:'system',content:buildPrompt()
+          // 여러 말풍선이 쌓였으면 맥락 힌트 추가
+          +(combinedMsgs.length>1
+            ? `\n\n[참고] 상대방이 방금 ${combinedMsgs.length}개 말풍선을 연속으로 보냈어:\n${combinedMsgs.map((m,i)=>`${i+1}. ${m}`).join('\n')}\n전체 맥락을 한 번에 읽고 자연스럽게 한 번만 답해. 각 말풍선에 일일이 반응하지 마.`
+            : '')
+        },
+        ...messages.slice(-20).map(m=>{
+          const role=m.role==='ai'?'assistant':m.role;
+          const content=m.content||'';
+          if(typeof content==='string'&&content.startsWith('[이미지] ')){
+            const url=content.replace('[이미지] ','').trim();
+            return {role,content:[
+              {type:'image_url',image_url:{url,detail:'auto'}},
+              {type:'text',text:'(사진을 보냈어)'}
+            ]};
+          }
+          return {role,content:typeof content==='string'?content:JSON.stringify(content)};
+        })
+      ]})
     });
     removeTyping(typId);typRemoved=true;
     document.getElementById('chat-status').textContent='입력 중...';

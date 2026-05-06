@@ -1643,9 +1643,10 @@ async function sendMessage(){
   // 기존 타이머 초기화 (연속 입력 감지)
   if(replyTimer) clearTimeout(replyTimer);
 
- // 마지막 메시지 후 침묵 감지 — 입력 멈추면 대화 끝난 것으로 판단
+  // 마지막 메시지 후 침묵 감지
+  // 메시지 보낼 때마다 타이머 리셋 → 입력 멈추면 그때 답장
   const lastMsgLength = pendingUserMsgs.join('').length;
-  const silenceWait = lastMsgLength > 50 ? 4000 : 3000;
+  const silenceWait = lastMsgLength > 50 ? 5000 : 4000; // 긴 내용 5초, 짧으면 4초
 
   replyTimer = setTimeout(async()=>{
     if(isLoading)return;

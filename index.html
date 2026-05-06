@@ -1615,13 +1615,16 @@ async function sendMessage(){
   // 기존 타이머 초기화 (연속 입력 감지)
   if(replyTimer) clearTimeout(replyTimer);
 
-  // 15초 대기 — 여러 말풍선 다 보낼 때까지 기다렸다가 전체 맥락으로 답장
+ // 마지막 메시지 후 침묵 감지 — 입력 멈추면 대화 끝난 것으로 판단
+  const lastMsgLength = pendingUserMsgs.join('').length;
+  const silenceWait = lastMsgLength > 50 ? 4000 : 3000;
+
   replyTimer = setTimeout(async()=>{
     if(isLoading)return;
-    const combinedMsgs = pendingUserMsgs.slice(); // 쌓인 메시지 전체 복사
+    const combinedMsgs = pendingUserMsgs.slice();
     pendingUserMsgs = [];
     await callGPT(combinedMsgs);
-  }, 15000);
+  }, silenceWait);
 }
 async function callGPT(combinedMsgs=[]){
   if(isLoading)return;isLoading=true;const ch=getChar();

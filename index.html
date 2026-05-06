@@ -2359,22 +2359,12 @@ async function addScheduleManual(){
 
 
 async function autoDetectSchedule(text){
-  const schedulePattern=/약속|미팅|회의|예약|일정|방문|만남|행사|시험|발표|면접|모임|데이트|여행|출장|병원|수업|강의|콘서트|공연|결혼식|생일|기념일|피부과|치과|내과|정형외과|안과|이비인후과|예정|할거야|할게|갈거야|갈게/;
-  const datePattern=/(\d{1,2})월\s*(\d{1,2})일|내일|모레|다음\s*주|이번\s*주|월요일|화요일|수요일|목요일|금요일|토요일|일요일|\d{1,2}시/;
+  // 명확한 일정 등록 의도 — "해줘" "등록해" "추가해" 또는 날짜+일정 동시에 있을 때만
+  const explicitPattern=/일정\s*(등록|추가|넣어|해줘|저장)|캘린더\s*(에|에다)?\s*(등록|추가|넣어|해줘)/;
+  const scheduleWithDate=/((내일|모레|다음\s*주|이번\s*주|월요일|화요일|수요일|목요일|금요일|토요일|일요일|(\d{1,2})월\s*(\d{1,2})일).{0,20}(약속|미팅|회의|예약|일정|방문|면접|모임|데이트|병원|시험|콘서트|공연|결혼식)|(약속|미팅|회의|예약|일정|방문|면접|모임|데이트|병원|시험|콘서트|공연|결혼식).{0,20}(내일|모레|다음\s*주|이번\s*주|월요일|화요일|수요일|목요일|금요일|토요일|일요일|(\d{1,2})월\s*(\d{1,2})일))/;
 
-  // 일정 키워드 없으면 종료
-  if(!schedulePattern.test(text))return;
-
-  // ✅ 날짜/시간 정보 없으면 다리가 확인 질문
-  if(!datePattern.test(text)){
-    setTimeout(async()=>{
-      const q='언제야? 날짜랑 시간 알려주면 캘린더에 등록해줄게';
-      appendMsg('ai',q);
-      messages.push({role:'assistant',content:q,created_at:new Date().toISOString()});
-      await saveMsg('assistant',q);
-    },2200);
-    return;
-  }
+  // 둘 다 없으면 완전히 무시 — 질문도 안 함
+  if(!explicitPattern.test(text) && !scheduleWithDate.test(text)) return;
 
   try{
     const uid=safeUserId();

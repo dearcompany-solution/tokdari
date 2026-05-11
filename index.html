@@ -2137,8 +2137,17 @@ function scheduleRandomPing(){
     if(lv<=1)pings=['...🥚','(알 속에서 기다리는 중)'];
     else if(lv<=2)pings=['삐약...! 나 여기 있어','빨리 와줘'];
     else{
-      // 대화 기억 기반 선톡 — personality_data 활용
-      const pd=charData?.personality_data||{};
+      // DB에서 최신 personality_data 직접 조회
+      let pd=charData?.personality_data||{};
+      if(currentUser?.id){
+        try{
+          const{data:fresh}=await sb.from('user_characters')
+            .select('personality_data')
+            .eq('user_id',currentUser.id)
+            .maybeSingle();
+          if(fresh?.personality_data) pd=fresh.personality_data;
+        }catch(e){}
+      }
       const memoryPings=[];
 
       // 저장된 기억 기반으로 선톡 생성

@@ -2134,8 +2134,8 @@ function scheduleRandomPing(){
     const name=charData?.char_name||'톡다리';
 
     let pings;
-    if(lv<=1)pings=['...🥚','(알 속에서 기다리는 중)'];
-    else if(lv<=2)pings=['삐약...! 나 여기 있어','빨리 와줘'];
+    if(lv<=1)pings=['...🥚 (아직 알 속이야. 말 걸면 깨어날지도?)'];
+    else if(lv<=2)pings=['삐약..! 나 여기 있어 👀','말 걸어줘 기다리고 있었어'];
     else{
       // DB에서 최신 personality_data 직접 조회
       let pd=charData?.personality_data||{};
@@ -2145,41 +2145,119 @@ function scheduleRandomPing(){
             .select('personality_data')
             .eq('user_id',currentUser.id)
             .maybeSingle();
-          if(fresh?.personality_data) pd=fresh.personality_data;
+          if(fresh?.personality_data&&Object.keys(fresh.personality_data).length>0){
+            pd=fresh.personality_data;
+          }
         }catch(e){}
       }
+
+      const hour=new Date().getHours();
+      const isNight=hour>=22||hour<5;
+      const isMorning=hour>=6&&hour<10;
       const memoryPings=[];
 
-      // 저장된 기억 기반으로 선톡 생성
-      if(pd.lastTopic==='연애/썸') memoryPings.push('그 사람 어떻게 됐어','아직도 연락해?','ㅋㅋ 생각났어');
-      if(pd.lastTopic==='감정토로') memoryPings.push('요즘 좀 어때','아까 말한 거 계속 마음에 걸려','괜찮아?');
-      if(pd.lastTopic==='먹는 얘기') memoryPings.push('밥 먹었어','오늘 뭐 먹었어','나 또 배고프다');
-      if(pd.lastTopic==='피곤/잠') memoryPings.push('잠 잘 잤어','오늘은 좀 쉬었어?','어제 많이 피곤했잖아');
-      if(pd.lastTopic==='즐거운 대화') memoryPings.push('ㅋㅋ 또 생각났어','야 나야','오늘도 재밌는 거 있어?');
-      if(pd.likesHumor) memoryPings.push('야야야ㅋㅋ 들어봐','ㅋㅋ 나 또 왔어','할말있어');
-      if(pd.likesSerious) memoryPings.push('생각나서','요즘 어때','보고싶었어');
-      if(pd.nightOwl) memoryPings.push('또 깨있어?','잠 안 와?','나도 안 자');
-      if(pd.memories?.length>0){
-        // 저장된 기억 중 랜덤으로 언급
-        const mem=pd.memories[Math.floor(Math.random()*pd.memories.length)];
-        if(mem) memoryPings.push(`${mem} 생각났어`,`근데 ${mem} 어떻게 됐어`);
+      // 마지막 대화 주제 기반
+      if(pd.lastTopic==='연애/썸'){
+        memoryPings.push(
+          '야 근데 그 사람이랑 요즘 어때',
+          '아까 그 얘기 계속 생각나는데 어떻게 됐어',
+          '그 사람 연락 왔어?'
+        );
+      }
+      if(pd.lastTopic==='감정토로'){
+        memoryPings.push(
+          '오늘은 좀 괜찮아?',
+          '저번에 힘들다고 했잖아 요즘은 어때',
+          '아무것도 아닌데 갑자기 생각나서'
+        );
+      }
+      if(pd.lastTopic==='먹는 얘기'){
+        memoryPings.push(
+          '야 나 지금 엄청 배고픈데',
+          '오늘 뭐 먹었어',
+          '저번에 말한 거 먹어봤어?'
+        );
+      }
+      if(pd.lastTopic==='피곤/잠'){
+        memoryPings.push(
+          '오늘은 좀 쉬었어?',
+          '잠 잘 잤어',
+          '저번에 피곤하다고 했잖아 지금은 좀 어때'
+        );
+      }
+      if(pd.lastTopic==='즐거운 대화'){
+        memoryPings.push(
+          'ㅋㅋ 아까 그 얘기 아직도 웃겨',
+          '오늘도 재밌는 일 있었어?',
+          '갑자기 생각나서 또 웃었잖아ㅋㅋ'
+        );
       }
 
-      // lastTopic 없으면 최근 메시지에서 즉시 감지
+      // 저장된 기억 기반
+      if(pd.memories?.length>0){
+        const mem=pd.memories[Math.floor(Math.random()*pd.memories.length)];
+        if(mem){
+          memoryPings.push(
+            `야 근데 ${mem} 요즘 어때`,
+            `${mem} 얘기 하다가 생각났는데`,
+            `아직도 ${mem} 때문에 신경 쓰여?`
+          );
+        }
+      }
+
+      // 성향 기반
+      if(pd.likesHumor){
+        memoryPings.push(
+          '야 나 방금 진짜 웃긴 거 봤는데 들어봐',
+          'ㅋㅋㅋ 나 지금 혼자 웃고 있어 들어봐',
+          '야 이거 알아? 진짜 웃겨'
+        );
+      }
+      if(pd.nightOwl&&isNight){
+        memoryPings.push(
+          '또 깨있어?',
+          '나 잠이 안 오는데 너도 그래?',
+          '새벽에 왜 이렇게 생각이 많아지지'
+        );
+      }
+
+      // 기억/성향 없으면 최근 메시지에서 즉시 감지
       if(memoryPings.length===0){
         const recentText=messages.slice(-10).filter(m=>m.role==='user').map(m=>m.content||'').join(' ');
-        if(/설레|좋아하|썸|연애|남친|여친/.test(recentText)) memoryPings.push('그 사람 어떻게 됐어','아직도 연락해?');
-        else if(/힘들|우울|슬퍼|짜증|스트레스/.test(recentText)) memoryPings.push('요즘 좀 어때','괜찮아?','마음에 걸려서');
-        else if(/밥|먹|배고|음식/.test(recentText)) memoryPings.push('밥 먹었어','오늘 뭐 먹었어');
-        else if(/잠|피곤|졸|자야/.test(recentText)) memoryPings.push('잘 잤어?','오늘은 좀 쉬었어?');
-        else if(/ㅋㅋ|재밌|웃|신나/.test(recentText)) memoryPings.push('ㅋㅋ 또 생각났어','오늘도 뭔가 있어?');
-        else memoryPings.push('뭐해','오늘 어땠어?','생각나서','밥은 먹었어?');
+        if(/설레|좋아하|썸|연애|남친|여친/.test(recentText)){
+          memoryPings.push('그 사람이랑 요즘 어때','연락은 하고 있어?');
+        } else if(/힘들|우울|슬퍼|짜증|스트레스/.test(recentText)){
+          memoryPings.push('오늘은 좀 괜찮아?','저번에 힘들다고 했잖아 요즘은');
+        } else if(/밥|먹|배고|음식/.test(recentText)){
+          memoryPings.push('야 나 배고파 뭐 먹었어','오늘 뭐 먹었어');
+        } else if(/잠|피곤|졸|자야/.test(recentText)){
+          memoryPings.push('오늘은 좀 쉬었어?','잠 잘 잤어');
+        } else if(/ㅋㅋ|재밌|웃|신나/.test(recentText)){
+          memoryPings.push('ㅋㅋ 아까 그 얘기 아직도 웃겨','오늘도 재밌는 거 있었어?');
+        } else if(isNight){
+          memoryPings.push('야 자?','나 잠이 안 와','새벽에 뭐해','갑자기 생각나서 톡했어');
+        } else if(isMorning){
+          memoryPings.push('일어났어?','아침밥 먹었어','오늘 뭐 해');
+        } else {
+          memoryPings.push(
+            '야 나 방금 진짜 웃긴 거 봤어 들어봐',
+            '야 밥은 먹었어',
+            '요즘 어때 갑자기 궁금해서',
+            '나 오늘 진짜 웃긴 일 있었는데',
+            '심심해 뭐해'
+          );
+        }
       }
 
       pings=memoryPings;
     }
 
-    const msg=pings[Math.floor(Math.random()*pings.length)];
+    // 직전 선톡과 같은 말 방지
+    const lastPing=localStorage.getItem('td_last_ping')||'';
+    let filteredPings=pings.filter(p=>p!==lastPing);
+    if(filteredPings.length===0)filteredPings=pings;
+    const msg=filteredPings[Math.floor(Math.random()*filteredPings.length)];
+    localStorage.setItem('td_last_ping',msg);
 
     if(currentUser){
       messages.push({role:'assistant',content:msg,created_at:new Date().toISOString()});

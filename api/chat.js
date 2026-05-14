@@ -189,7 +189,8 @@ module.exports = async function handler(req, res) {
 
     if (!response.ok) {
       const err = await response.json().catch(() => ({}));
-      return res.status(response.status).json({ error: err.error?.message || '오류' });
+      console.error('OpenAI 오류:', err.error?.message);
+      return res.status(500).json({ error: '일시적인 오류가 생겼어. 다시 해봐!' });
     }
 
     const data = await response.json();

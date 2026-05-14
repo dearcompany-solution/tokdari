@@ -1835,7 +1835,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   // 모바일 blur 방지 — 채팅창 열려있을 때만
   ta.addEventListener('blur',()=>{
     setTimeout(()=>{
-      const chatOpen=document.getElementById('chat-screen')?.classList.contains('show');
+      const chatOpen=document.getElementById('chat-screen')?.classList.contains('active');
       const active=document.activeElement;
       const isBtn=active?.tagName==='BUTTON'||active?.tagName==='INPUT';
       if(chatOpen&&!isBtn){

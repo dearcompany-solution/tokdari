@@ -2294,7 +2294,8 @@ function scheduleRandomPing(){
     // 앱 열려있을 때 채팅창에도 표시
     const chatOpen=document.getElementById('chat-screen')?.classList.contains('active');
     if(!document.hidden&&chatOpen){
-      appendMsg('ai',msg);
+      await loadMessages();
+      scrollToBottom();
     }else if(!document.hidden){
       playPingSound();
       showToast(`${name}: ${msg}`);

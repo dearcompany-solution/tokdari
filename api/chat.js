@@ -121,7 +121,7 @@ module.exports = async function handler(req, res) {
           const results = validResults
             .map((r,i) => `[${i+1}] 제목: ${r.title}\n내용: ${r.description||'(설명 없음)'}\nURL: ${r.url}${r.age?'\n날짜: '+r.age:''}`)
             .join('\n\n');
-          searchContext = `\n\n====실시간검색결과(${today})=====\n${results}\n====여기까지====\n\n[규칙]\n1. 위 내용 기반으로 답해\n2. URL은 반드시 그대로 전달해. 절대 생략하지 마\n3. 날짜 있으면 같이 알려줘\n4. 반말로 짧게 핵심만\n5. "링크를 줄 수 없어" "확인할 수 없어" 같은 말 절대 하지 마. 위에 URL 있으면 그거 줘\n6. 이미지 URL도 그대로 전달해`;
+          searchContext = `\n\n====실시간검색결과(${today})=====\n${results}\n====여기까지====\n\n[규칙]\n1. 위 내용 기반으로 답해\n2. 위에 있는 URL만 전달해. 없는 URL 절대 지어내지 마\n3. 날짜 있으면 같이 알려줘\n4. 반말로 짧게 핵심만\n5. "링크를 줄 수 없어" "확인할 수 없어" 같은 말 하지 마\n6. URL 줄 때 한 줄에 하나씩. 깔끔하게`;
         } else {
           // 살아있는 링크 없어도 내용은 전달 — URL만 빼고
           const fallback = sorted.slice(0, searchCount);
@@ -164,13 +164,13 @@ module.exports = async function handler(req, res) {
         const imgCandidates = imgData.results?.slice(0,5).filter(r=>r.url?.startsWith('http'))||[];
         const imgChecks = await Promise.all(
           imgCandidates.map(async r=>{
-            const ok=await isLinkAccessible(r.url);
-            return ok?r:null;
+            const ok=await isLinkAccessible(r.properties?.url||r.url);
+            return ok?{...r,directUrl:r.properties?.url||r.url}:null;
           })
         );
         const validImgs = imgChecks.filter(Boolean).slice(0,3);
         if(validImgs.length>0){
-          imageContext = `\n\n[이미지 - 접근 확인됨]\n${validImgs.map(r=>`이미지: ${r.url}`).join('\n')}\nURL 그대로 전달해줘.`;
+          imageContext = `\n\n[이미지]\n${validImgs.map(r=>`이미지: ${r.directUrl}\n출처: ${r.url}`).join('\n')}\n위 이미지 URL을 그대로 전달해. 없는 URL 지어내지 마.`;
         }
       } catch(e){}
     }

@@ -711,6 +711,20 @@ function saveSession(p){try{localStorage.setItem('tdv3',JSON.stringify({id:Strin
 function loadSession(){try{return JSON.parse(localStorage.getItem('tdv3'));}catch{return null;}}
 function clearSession(){localStorage.removeItem('tdv3');}
 window.addEventListener('load',async()=>{
+  // 오프라인/온라인 감지
+  window.addEventListener('offline',()=>{
+    document.getElementById('chat-status').textContent='오프라인';
+    document.getElementById('chat-status').style.color='var(--text3)';
+    document.querySelector('.online-dot').style.background='var(--text3)';
+    showToast('인터넷 연결이 끊겼어 📡');
+  });
+  window.addEventListener('online',()=>{
+    document.getElementById('chat-status').textContent='온라인';
+    document.getElementById('chat-status').style.color='var(--green)';
+    document.querySelector('.online-dot').style.background='var(--green)';
+    showToast('다시 연결됐어! 🎉');
+  });
+
   if('serviceWorker' in navigator){
     // 기존 서비스워커 캐시 강제 갱신
     navigator.serviceWorker.register('sw.js').catch(()=>{});
@@ -1647,6 +1661,11 @@ let isUserTyping = false;      // 타이핑 중 여부
 let typingTimer = null;        // 타이핑 멈춤 감지 타이머
 
 async function sendMessage(){
+  // 오프라인이면 전송 차단
+  if(!navigator.onLine){
+    showToast('인터넷 연결이 없어! 연결 후 다시 보내줘 📡');
+    return;
+  }
   // 일일 메시지 제한 (100개)
   const todayKey='td_msg_count_'+new Date().toISOString().slice(0,10);
   const msgCount=parseInt(localStorage.getItem(todayKey)||'0');
@@ -1741,6 +1760,8 @@ async function sendMessage(){
 }
 async function callGPT(combinedMsgs=[]){
   if(isLoading)return;isLoading=true;const ch=getChar();
+  const sendBtn=document.getElementById('send-btn');
+  if(sendBtn){sendBtn.disabled=true;sendBtn.style.opacity='0.5';}
   if(ch&&Math.random()<ch.ignore){
     document.getElementById('chat-status').textContent='읽음';isLoading=false;
     setTimeout(async()=>{
@@ -1804,6 +1825,7 @@ async function callGPT(combinedMsgs=[]){
   }
   if(totalMsgs>0&&totalMsgs%10===0)autoSaveDiary();
   isLoading=false;document.getElementById('chat-status').textContent='온라인';
+  if(sendBtn){sendBtn.disabled=false;sendBtn.style.opacity='1';}
 }
 function appendMsg(role,content,imgSrc,silent=false){
   const wrap=document.getElementById('chat-messages');const row=document.createElement('div');row.className='msg-row'+(role==='user'?' user':'');

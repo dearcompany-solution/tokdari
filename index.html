@@ -2534,7 +2534,7 @@ async function addScheduleManual(){
   await sb.from('schedules').insert({
     user_id:currentUser.id,title,
     content:'',
-    event_date:new Date(dateStr+'T09:00:00').toISOString(),
+    event_date:new Date(dateStr+'T'+(timeStr||'09:00')+':00').toISOString(),
     due_date:dateStr,
     created_at:new Date().toISOString()
   });

@@ -1,4 +1,4 @@
-const fetch = (...args) => import('node-fetch').then(({default: f}) => f(...args));
+
 
 // 링크 접근 가능 여부 체크 — GET으로 변경 (HEAD 막는 사이트 대응)
 async function isLinkAccessible(url){

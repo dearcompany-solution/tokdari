@@ -2548,11 +2548,64 @@ async function addScheduleManual(){
 
 
 async function autoDetectSchedule(text){
-  // 명확한 일정 등록 의도 — "해줘" "등록해" "추가해" 또는 날짜+일정 동시에 있을 때만
+  // 명확한 일정 등록 의도
   const explicitPattern=/일정\s*(등록|추가|넣어|해줘|저장)|캘린더\s*(에|에다)?\s*(등록|추가|넣어|해줘)/;
-  const scheduleWithDate=/((내일|모레|다음\s*주|이번\s*주|월요일|화요일|수요일|목요일|금요일|토요일|일요일|(\d{1,2})월\s*(\d{1,2})일).{0,20}(약속|미팅|회의|예약|일정|방문|면접|모임|데이트|병원|시험|콘서트|공연|결혼식)|(약속|미팅|회의|예약|일정|방문|면접|모임|데이트|병원|시험|콘서트|공연|결혼식).{0,20}(내일|모레|다음\s*주|이번\s*주|월요일|화요일|수요일|목요일|금요일|토요일|일요일|(\d{1,2})월\s*(\d{1,2})일))/;
+  const scheduleWithDate=/((내일|모레|다음\s*주|이번\s*주|월요일|화요일|수요일|목요일|금요일|토요일|일요일|(\d{1,2})월\s*(\d{1,2})일).{0,20}(약속|미팅|회의|예약|일정|방문|면접|모임|데이트|병원|시험|콘서트|공연|결혼식|치과|피부과|식당)|(약속|미팅|회의|예약|일정|방문|면접|모임|데이트|병원|시험|콘서트|공연|결혼식|치과|피부과|식당).{0,20}(내일|모레|다음\s*주|이번\s*주|월요일|화요일|수요일|목요일|금요일|토요일|일요일|(\d{1,2})월\s*(\d{1,2})일))/;
 
-  // 둘 다 없으면 완전히 무시 — 질문도 안 함
+  // 후속 메시지 감지 — "7시" "3시" "오후2시" 같은 시간만 단독으로 온 경우
+  const timeOnlyPattern=/^[\s]*(오전|오후)?[\s]*(\d{1,2})[\s]*(시|:|시반)[\s]*(반|(\d{1,2})분)?[\s]*$/;
+  const detailPattern=/^[\s]*(메뉴|장소|준비물|메모|참고|위치)[:\s]*.+/;
+  if(timeOnlyPattern.test(text)||detailPattern.test(text)){
+    // 최근 등록된 일정 찾아서 업데이트
+    try{
+      const uid=safeUserId();if(!uid)return;
+      const{data:recent}=await sb.from('schedules')
+        .select('*').eq('user_id',uid)
+        .order('created_at',{ascending:false}).limit(1);
+      if(!recent?.length)return;
+      const last=recent[0];
+      const fiveMinAgo=new Date(Date.now()-5*60*1000).toISOString();
+      if(last.created_at<fiveMinAgo)return; // 5분 이내 등록된 것만
+
+      const updates={};
+      if(timeOnlyPattern.test(text)){
+        const m=text.match(/(오전|오후)?[\s]*(\d{1,2})[\s]*(시|:|시반)/);
+        if(m){
+          let hour=parseInt(m[2]);
+          if(m[1]==='오후'&&hour<12)hour+=12;
+          if(m[1]==='오전'&&hour===12)hour=0;
+          if(!m[1]&&hour>=1&&hour<=6)hour+=12; // 1~6시는 오후로 추정
+          const half=text.includes('반')?30:0;
+          const timeStr=`${String(hour).padStart(2,'0')}:${String(half).padStart(2,'0')}`;
+          const dateStr=last.due_date||last.event_date?.slice(0,10);
+          updates.event_date=new Date(`${dateStr}T${timeStr}:00`).toISOString();
+        }
+      }
+      if(detailPattern.test(text)){
+        const detail=text.replace(/^(메뉴|장소|준비물|메모|참고|위치)[:\s]*/,'').trim();
+        updates.content=last.content?(last.content+', '+detail):detail;
+      }
+
+      if(Object.keys(updates).length>0){
+        await sb.from('schedules').update(updates).eq('id',last.id);
+        const newDate=updates.event_date?new Date(updates.event_date):new Date(last.event_date);
+        const dateLabel=newDate.toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'short'});
+        const timeLabel=updates.event_date?newDate.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}):'';
+        showToast(`📅 ${last.title} 업데이트됨!`);
+        setTimeout(async()=>{
+          const msg=`${last.title} ${dateLabel} ${timeLabel} 으로 업데이트했어 📅`;
+          appendMsg('ai',msg);
+          messages.push({role:'assistant',content:msg,created_at:new Date().toISOString()});
+          await saveMsg('assistant',msg);
+        },1500);
+        if(currentTab==='calendar')loadCalendar();
+        else{const{data:all}=await sb.from('schedules').select('*').eq('user_id',uid);calSchedules=all||[];}
+      }
+      return;
+    }catch(e){console.error('일정 업데이트 오류:',e);}
+  }
+
+  // 둘 다 없으면 완전히 무시
   if(!explicitPattern.test(text) && !scheduleWithDate.test(text)) return;
 
   try{
@@ -2591,25 +2644,30 @@ async function autoDetectSchedule(text){
       .eq('due_date',schedule.date);
 
     if(existing&&existing.length>0){
-      // 같은 날 제목 유사도 체크
       const dupItem=existing.find(s=>{
         const t1=s.title?.replace(/\s/g,'').toLowerCase();
         const t2=schedule.title?.replace(/\s/g,'').toLowerCase();
         return t1===t2||t1?.includes(t2)||t2?.includes(t1);
       });
-      if(dupItem&&schedule.time){
-        // 같은 일정인데 시간 정보가 새로 들어왔으면 업데이트
-        const newDate=new Date(`${schedule.date}T${schedule.time}:00`);
-        await sb.from('schedules').update({
-          event_date:newDate.toISOString()
-        }).eq('id',dupItem.id);
-        const dateLabel=newDate.toLocaleDateString('ko-KR',{month:'long',day:'numeric'});
-        showToast(`📅 ${schedule.title} 시간 ${schedule.time}으로 변경됨!`);
-        if(currentTab==='calendar')loadCalendar();
-        return;
-      }
       if(dupItem){
-        console.log('중복 일정 차단:',schedule.title,schedule.date);
+        const updates={};
+        if(schedule.time) updates.event_date=new Date(`${schedule.date}T${schedule.time}:00`).toISOString();
+        if(schedule.content) updates.content=dupItem.content?dupItem.content+', '+schedule.content:schedule.content;
+        if(Object.keys(updates).length>0){
+          await sb.from('schedules').update(updates).eq('id',dupItem.id);
+          const newDate=updates.event_date?new Date(updates.event_date):new Date(dupItem.event_date);
+          const dateLabel=newDate.toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'short'});
+          const timeStr=schedule.time?' '+schedule.time:'';
+          showToast(`📅 ${dupItem.title} 업데이트됨!`);
+          setTimeout(async()=>{
+            const msg=`${dupItem.title} ${dateLabel}${timeStr} 으로 업데이트했어 📅`;
+            appendMsg('ai',msg);
+            messages.push({role:'assistant',content:msg,created_at:new Date().toISOString()});
+            await saveMsg('assistant',msg);
+          },2200);
+          if(currentTab==='calendar')loadCalendar();
+          else{const{data:all}=await sb.from('schedules').select('*').eq('user_id',currentUser.id);calSchedules=all||[];}
+        }
         return;
       }
     }

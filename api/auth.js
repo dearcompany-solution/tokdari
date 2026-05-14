@@ -75,14 +75,14 @@ module.exports = async function handler(req, res) {
 
   // ── 비밀번호 찾기 (로그아웃 상태) ──
   if (action === 'resetPassword') {
-    // ✅ 버그 수정: 재선언 제거, 상단 구조분해 변수(email, password) 그대로 사용
     if (!email || !password) return res.status(400).json({ error: '이메일과 비밀번호를 입력해줘' });
     try {
-      const { data: profile, error: profileErr } = await sb.from('profiles')
+      const { data: profiles, error: profileErr } = await sb.from('profiles')
         .select('auth_id')
-        .eq('email', email)
-        .maybeSingle();
-      if (profileErr || !profile?.auth_id) return res.status(404).json({ error: '가입된 이메일이 아니야' });
+        .eq('email', email);
+      const profile = profiles?.[0];
+      if (profileErr) return res.status(500).json({ error: '조회 오류: ' + profileErr.message });
+      if (!profile?.auth_id) return res.status(404).json({ error: '가입된 이메일이 아니야', debug: profiles });
 
       const { error: updateErr } = await sb.auth.admin.updateUserById(profile.auth_id, { password });
       if (updateErr) return res.status(500).json({ error: '비밀번호 변경 실패: ' + updateErr.message });

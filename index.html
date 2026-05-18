@@ -880,6 +880,22 @@ async function startApp(){
   const{data}=await sb.from('user_characters').select('*').eq('user_id',currentUser.id).maybeSingle();
   if(!data){startMatching();return;}
   charData=data;bondLevel=data.bond||0;totalMsgs=data.total_msgs||0;chatDays=data.chat_days||0;
+  // localStorage 백업이 DB보다 높으면 복원
+  try{
+    const backup=JSON.parse(localStorage.getItem('td_bond_backup')||'null');
+    if(backup&&(backup.total_msgs>totalMsgs||backup.bond>bondLevel)){
+      bondLevel=backup.bond;totalMsgs=backup.total_msgs;chatDays=backup.chat_days||chatDays;
+      charData.personality_data=backup.personality_data||charData.personality_data;
+      // DB에 복원 시도
+      await sb.from('user_characters').update({
+        bond:bondLevel,total_msgs:totalMsgs,chat_days:chatDays,
+        personality_data:charData.personality_data,
+        updated_at:new Date().toISOString()
+      }).eq('user_id',currentUser.id);
+      console.log('친밀도 백업 복원 완료:',bondLevel,totalMsgs);
+      localStorage.removeItem('td_bond_backup');
+    }
+  }catch(e){}
   applyProfile();
   // 마지막 탭 복원
   const savedSession=loadSession();
@@ -1180,14 +1196,21 @@ async function updateBond(){
     updatedAt:   new Date().toISOString()
   };
 
-  charData={...charData,personality_data:newPd};
-  await sb.from('user_characters').update({
+  charData={...charData,personality_data:newPd,bond:bondLevel,total_msgs:totalMsgs,chat_days:chatDays};
+  const{error:bondErr}=await sb.from('user_characters').update({
     bond:bondLevel,
     total_msgs:totalMsgs,
     chat_days:chatDays,
     personality_data:newPd,
     updated_at:new Date().toISOString()
   }).eq('user_id',currentUser.id);
+  if(bondErr){
+    console.error('친밀도 저장 실패:',bondErr.message);
+    // localStorage에 백업 저장
+    try{localStorage.setItem('td_bond_backup',JSON.stringify({bond:bondLevel,total_msgs:totalMsgs,chat_days:chatDays,personality_data:newPd}));}catch(e){}
+  }else{
+    localStorage.removeItem('td_bond_backup');
+  }
   updateCharDisplay();
 }
 function switchTab(tab){

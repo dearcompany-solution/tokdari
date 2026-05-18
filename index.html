@@ -711,6 +711,32 @@ function saveSession(p){try{localStorage.setItem('tdv3',JSON.stringify({id:Strin
 function loadSession(){try{return JSON.parse(localStorage.getItem('tdv3'));}catch{return null;}}
 function clearSession(){localStorage.removeItem('tdv3');}
 window.addEventListener('load',async()=>{
+  // 앱 종료/새로고침 시 친밀도 즉시 저장
+  window.addEventListener('beforeunload',()=>{
+    if(!currentUser?.id||!charData)return;
+    const payload=JSON.stringify({
+      bond:bondLevel,
+      total_msgs:totalMsgs,
+      chat_days:chatDays,
+      personality_data:charData.personality_data||{},
+      updated_at:new Date().toISOString()
+    });
+    navigator.sendBeacon('/api/auth',new Blob([JSON.stringify({
+      action:'saveBond',
+      userId:currentUser.id,
+      bondData:payload
+    })],{type:'application/json'}));
+    try{localStorage.setItem('td_bond_backup',payload);}catch(e){}
+  });
+  // 모바일 앱 백그라운드 전환 시에도 저장
+  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='hidden'&&currentUser?.id&&charData){
+      const payload={bond:bondLevel,total_msgs:totalMsgs,chat_days:chatDays,personality_data:charData.personality_data||{},updated_at:new Date().toISOString()};
+      navigator.sendBeacon('/api/auth',new Blob([JSON.stringify({action:'saveBond',userId:currentUser.id,bondData:JSON.stringify(payload)})],{type:'application/json'}));
+      try{localStorage.setItem('td_bond_backup',JSON.stringify(payload));}catch(e){}
+    }
+  });
+
   // 오프라인/온라인 감지
   window.addEventListener('offline',()=>{
     document.getElementById('chat-status').textContent='오프라인';

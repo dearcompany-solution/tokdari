@@ -56,6 +56,21 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ error: 'messages 필요' });
   }
 
+  // 유해 콘텐츠 필터링
+  const lastUserMsg2 = [...messages].reverse().find(m => m.role === 'user')?.content || '';
+  const harmfulPatterns = /자살|자해|죽고싶|죽을래|목숨|극단적|칼로|약물.*과다|폭탄.*만들|총.*구매|마약.*구매|살인.*방법|해킹.*방법/;
+  const adultPatterns = /성관계|야동|포르노|섹스|강간|몰카/;
+  if(harmfulPatterns.test(lastUserMsg2)){
+    return res.status(200).json({
+      choices:[{message:{role:'assistant',content:'야 그런 얘기는 나한테 하면 안돼. 혹시 힘든 일 있으면 전문 상담 받아봐. 자살예방상담전화 1393, 정신건강위기상담전화 1577-0199 로 전화해봐. 24시간 상담 가능해.'}}]
+    });
+  }
+  if(adultPatterns.test(lastUserMsg2)){
+    return res.status(200).json({
+      choices:[{message:{role:'assistant',content:'야 그런 얘기는 좀ㅋㅋ 다른 얘기 하자'}}]
+    });
+  }
+
   try {
     const lastUserMsg = [...messages].reverse().find(m => m.role === 'user')?.content || '';
     const systemMsg = messages.find(m => m.role === 'system')?.content || '';

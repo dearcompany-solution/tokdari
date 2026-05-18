@@ -173,7 +173,7 @@ module.exports = async function handler(req, res) {
           const results = validResults
             .map((r,i) => `${r.title}\n${r.description||''}\n${r.url}${r.age?'\n'+r.age:''}`)
             .join('\n\n');
-          searchContext = `\n\n====검색결과====\n${results}\n====끝====\n\n[규칙]\n1. 위 내용 기반으로 자연스럽게 답해\n2. 링크 줄 때는 "여기서 볼 수 있어" "이거 참고해봐" 같이 자연스럽게 문장에 넣어\n3. 위에 없는 URL 절대 만들지 마\n4. "출처" "참고" 같은 딱딱한 표현 쓰지 마\n5. 반말로 짧게 친구처럼\n6. 검색결과 형식 그대로 보여주지 마. 네가 아는 것처럼 자연스럽게 말해`;
+          searchContext = `\n\n====검색결과(${today})====\n${results}\n====끝====\n\n[규칙]\n1. 위 내용 기반으로 자연스럽게 답해. 오늘 날짜는 ${today}이야\n2. 링크 줄 때는 "여기서 볼 수 있어" "이거 참고해봐" 같이 자연스럽게\n3. 위에 없는 URL 절대 만들지 마\n4. "출처" "참고" 같은 딱딱한 표현 쓰지 마\n5. 반말로 짧게 친구처럼\n6. 추천이나 순위 물어보면 검색 결과에서 구체적으로 이름/제목 뽑아서 알려줘. "여러가지 있어" 같은 뭉뚱그리기 금지\n7. 검색결과 형식 그대로 보여주지 마. 네가 아는 것처럼 자연스럽게 말해`;
         } else {
             const fallback = sorted.slice(0, searchCount);
             if(fallback.length > 0){

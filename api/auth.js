@@ -79,21 +79,95 @@ console.log('profiles count:', profiles?.length, 'profileErr:', profileErr?.mess
     }
   }
 
-  // ── 비밀번호 찾기 (로그아웃 상태) ──
-  if (action === 'resetPassword') {
-    if (!email || !password) return res.status(400).json({ error: '이메일과 비밀번호를 입력해줘' });
-    if (!name) return res.status(400).json({ error: '이름을 입력해줘' });
+  // ── 비밀번호 찾기: 인증 코드 발송 ──
+  if (action === 'sendResetCode') {
+    if (!email) return res.status(400).json({ error: '이메일을 입력해줘' });
     try {
       const { data: profiles, error: profileErr } = await sb.from('profiles')
         .select('auth_id, name')
         .eq('email', email);
       const profile = profiles?.[0];
-      if (profileErr) return res.status(500).json({ error: '조회 오류: ' + profileErr.message });
-      if (profile && profile.name !== name) return res.status(401).json({ error: '이름이 일치하지 않아!' });
-      if (!profile?.auth_id) return res.status(404).json({ error: '가입된 이메일이 아니야', debug: profiles });
+      if (profileErr || !profile?.auth_id) return res.status(404).json({ error: '가입된 이메일이 아니야' });
+
+      // 6자리 인증 코드 생성
+      const code = String(Math.floor(100000 + Math.random() * 900000));
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10분 유효
+
+      // profiles에 인증 코드 임시 저장
+      await sb.from('profiles').update({
+        reset_code: code,
+        reset_code_expires: expiresAt
+      }).eq('auth_id', profile.auth_id);
+
+      // Supabase 내장 이메일로 인증 코드 발송
+      const { error: inviteErr } = await sb.auth.admin.generateLink({
+        type: 'magiclink',
+        email: email,
+      });
+      // magiclink와 별개로 직접 이메일 발송 (Supabase Edge Function 또는 간단한 방식)
+      // 여기서는 profiles에 코드를 저장하고, 유저에게 코드를 알려주는 방식 사용
+      // 실제 이메일 발송은 아래 fetch로 처리
+
+      try {
+        await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            service_id: process.env.EMAILJS_SERVICE_ID || '',
+            template_id: process.env.EMAILJS_TEMPLATE_ID || '',
+            user_id: process.env.EMAILJS_PUBLIC_KEY || '',
+            template_params: {
+              to_email: email,
+              to_name: profile.name || '회원',
+              reset_code: code
+            }
+          })
+        });
+      } catch(emailErr) {
+        console.error('이메일 발송 실패:', emailErr);
+      }
+
+      return res.status(200).json({ success: true, message: '인증 코드를 이메일로 보냈어!' });
+    } catch(e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── 비밀번호 찾기: 인증 코드 확인 ──
+  if (action === 'verifyResetCode') {
+    if (!email || !req.body.code) return res.status(400).json({ error: '이메일과 인증 코드를 입력해줘' });
+    try {
+      const { data: profiles } = await sb.from('profiles')
+        .select('reset_code, reset_code_expires')
+        .eq('email', email);
+      const profile = profiles?.[0];
+      if (!profile) return res.status(404).json({ error: '유저를 찾을 수 없어' });
+      if (profile.reset_code !== req.body.code) return res.status(401).json({ error: '인증 코드가 틀렸어!' });
+      if (new Date() > new Date(profile.reset_code_expires)) return res.status(401).json({ error: '인증 코드가 만료됐어. 다시 요청해줘!' });
+
+      return res.status(200).json({ success: true, verified: true });
+    } catch(e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
+  // ── 비밀번호 찾기: 새 비밀번호 설정 ──
+  if (action === 'resetPassword') {
+    if (!email || !password || !req.body.code) return res.status(400).json({ error: '모든 항목을 입력해줘' });
+    try {
+      const { data: profiles } = await sb.from('profiles')
+        .select('auth_id, reset_code, reset_code_expires')
+        .eq('email', email);
+      const profile = profiles?.[0];
+      if (!profile?.auth_id) return res.status(404).json({ error: '가입된 이메일이 아니야' });
+      if (profile.reset_code !== req.body.code) return res.status(401).json({ error: '인증 코드가 틀렸어!' });
+      if (new Date() > new Date(profile.reset_code_expires)) return res.status(401).json({ error: '인증 코드가 만료됐어' });
 
       const { error: updateErr } = await sb.auth.admin.updateUserById(profile.auth_id, { password });
       if (updateErr) return res.status(500).json({ error: '비밀번호 변경 실패: ' + updateErr.message });
+
+      // 인증 코드 삭제
+      await sb.from('profiles').update({ reset_code: null, reset_code_expires: null }).eq('auth_id', profile.auth_id);
 
       return res.status(200).json({ success: true });
     } catch(e) {

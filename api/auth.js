@@ -99,17 +99,6 @@ console.log('profiles count:', profiles?.length, 'profileErr:', profileErr?.mess
         reset_code_expires: expiresAt
       }).eq('auth_id', profile.auth_id);
 
-      // Supabase 내장 이메일로 인증 코드 발송
-      const { error: inviteErr } = await sb.auth.admin.generateLink({
-        type: 'magiclink',
-        email: email,
-      });
-      // magiclink와 별개로 직접 이메일 발송 (Supabase Edge Function 또는 간단한 방식)
-      // 여기서는 profiles에 코드를 저장하고, 유저에게 코드를 알려주는 방식 사용
-      // 실제 이메일 발송은 아래 fetch로 처리
-
-      
-
       return res.status(200).json({ success: true, code: code, name: profile.name || '회원' });
     } catch(e) {
       return res.status(500).json({ error: e.message });

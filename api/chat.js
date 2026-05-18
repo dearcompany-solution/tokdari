@@ -80,12 +80,13 @@ module.exports = async function handler(req, res) {
     const noSearchNeeded = !isExpertMode && /힘들어|피곤|슬퍼|기뻐|화나|보고싶|사랑|ㅋㅋ|ㅠㅠ|밥|잠|자야|놀자|심심/.test(lastUserMsg);
     const needsSearch = isExpertMode || (
       !noSearchNeeded &&
-      lastUserMsg.length > 5 &&
-      /뭐야|뭔데|어때|알아|맞아|언제|어디|누구|얼마|몇|어떻게|왜|뉴스|최신|요즘|트렌드|연예|스포츠|주가|날씨|정보|알려줘|찾아봐|검색|모르|궁금|알고싶|뭐지|뭐임|어디야|누구야|맞아|사실|진짜/.test(lastUserMsg)
+      lastUserMsg.length > 3 &&
+      /뭐야|뭔데|어때|알아|맞아|언제|어디|누구|얼마|몇|어떻게|왜|뉴스|최신|요즘|트렌드|연예|스포츠|주가|날씨|정보|알려줘|찾아봐|검색|모르|궁금|알고싶|뭐지|뭐임|어디야|누구야|맞아|사실|진짜|추천|인기|순위|랭킹|TOP|1위|핫한|유행|맛집|볼만한|갈만한|할만한|살만한|좋은|괜찮은|비교|리뷰|평가|차이|vs|어떤게/.test(lastUserMsg)
     );
     const needsImage = /사진|이미지|그림|보여줘|어떻게생겼|어떻게 생겼/.test(lastUserMsg);
-    const isNewsSearch = /뉴스|최신|요즘|최근|오늘|어제|이번주/.test(lastUserMsg);
-    const searchCount = isExpertMode ? 5 : 3;
+    const isNewsSearch = /뉴스|최신|요즘|최근|오늘|어제|이번주|실시간|속보/.test(lastUserMsg);
+    const isRankingSearch = /추천|인기|순위|랭킹|TOP|1위|핫한|유행|볼만한|갈만한|할만한|살만한|맛집|베스트/.test(lastUserMsg);
+    const searchCount = isExpertMode ? 5 : (isRankingSearch ? 5 : 3);
 
     const BLOCKED = [
       'chosun.com','joongang.co.kr','donga.com','hani.co.kr','kmib.co.kr',
@@ -123,14 +124,21 @@ module.exports = async function handler(req, res) {
       try {
         // 뉴스면 최신 1주일 우선, 아니면 전체
         // 검색 쿼리 최적화 — 불필요한 말투 제거
-        const searchQuery = lastUserMsg
+        let searchQuery = lastUserMsg
           .replace(/[?!~ㅋㅋㅎㅎㅠㅠㅜㅜ]/g,'')
-          .replace(/뭐야|뭔데|알려줘|찾아봐|검색해줘|궁금해|알고싶어|뭐임/g,'')
-          .replace(/요즘|최근|지금|올해/g,'2026년 5월')
+          .replace(/뭐야|뭔데|알려줘|찾아봐|검색해줘|궁금해|알고싶어|뭐임|좀|제발|하나만/g,'')
+          .replace(/요즘|최근|지금|올해/g,'2026')
           .trim() || lastUserMsg;
-        // 검색어에 연도 없으면 추가
+        // 추천/순위 검색이면 키워드 보강
+        if(isRankingSearch){
+          searchQuery = searchQuery.replace(/추천해줘|추천좀|추천 해줘/g,'추천').replace(/뭐가 좋아|뭐가좋아/g,'');
+          if(!/순위|랭킹|TOP|베스트|인기/.test(searchQuery)) searchQuery += ' 인기 순위';
+          searchQuery += ' 2026년 5월';
+        }
         const finalQuery = /\d{4}/.test(searchQuery) ? searchQuery : searchQuery + ' 2026';
-        let rawResults = await doSearch(finalQuery, isNewsSearch ? 'pw' : 'pm');
+        // 뉴스는 1주일, 순위/추천은 1개월, 나머지도 1개월
+        const freshness = isNewsSearch ? 'pw' : 'pm';
+        let rawResults = await doSearch(finalQuery, freshness);
 
         // 결과 없거나 너무 적으면 — 쿼리 단순화해서 재검색
         if(rawResults.length < 3){

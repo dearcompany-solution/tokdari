@@ -2887,6 +2887,89 @@ async function addScheduleManual(){
 
 
 async function autoDetectSchedule(text){
+  // ── 일정 삭제 감지 ──
+  const deletePattern=/(삭제|지워|취소|없애|빼줘|제거).*(일정|약속|미팅|회의|예약|스케줄)|(일정|약속|미팅|회의|예약|스케줄).*(삭제|지워|취소|없애|빼줘|제거)/;
+  if(deletePattern.test(text)){
+    try{
+      const uid=safeUserId();if(!uid)return;
+      // 텍스트에서 일정 제목 키워드 추출
+      const keywords=text.replace(/삭제|지워|취소|없애|빼줘|제거|해줘|해|좀|일정|약속|스케줄|내용|캘린더/g,'').trim();
+      const{data:allSchedules}=await sb.from('schedules')
+        .select('*').eq('user_id',uid)
+        .order('event_date',{ascending:true});
+      if(!allSchedules?.length){
+        appendMsg('ai','등록된 일정이 없어!');
+        messages.push({role:'assistant',content:'등록된 일정이 없어!',created_at:new Date().toISOString()});
+        await saveMsg('assistant','등록된 일정이 없어!');
+        return;
+      }
+      // 키워드로 일정 찾기
+      let matched=null;
+      if(keywords.length>1){
+        matched=allSchedules.find(s=>s.title&&s.title.includes(keywords));
+        if(!matched) matched=allSchedules.find(s=>s.title&&keywords.includes(s.title));
+        if(!matched){
+          const kw=keywords.split(/\s+/);
+          matched=allSchedules.find(s=>kw.some(k=>k.length>1&&s.title?.includes(k)));
+        }
+      }
+      if(matched){
+        await sb.from('schedules').delete().eq('id',matched.id);
+        const dateLabel=new Date(matched.event_date).toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'short'});
+        const msg=`${matched.title} (${dateLabel}) 일정 삭제했어 🗑️`;
+        setTimeout(async()=>{
+          appendMsg('ai',msg);
+          messages.push({role:'assistant',content:msg,created_at:new Date().toISOString()});
+          await saveMsg('assistant',msg);
+        },1000);
+        if(currentTab==='calendar')loadCalendar();
+        else{const{data:all}=await sb.from('schedules').select('*').eq('user_id',uid);calSchedules=all||[];}
+      }else{
+        // 못 찾으면 목록 보여주기
+        const list=allSchedules.slice(0,5).map((s,i)=>{
+          const d=new Date(s.event_date).toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'short'});
+          return `${i+1}. ${s.title} (${d})`;
+        }).join('\n');
+        const msg=`어떤 일정 삭제할까? 📋\n${list}\n\n번호나 제목으로 말해줘!`;
+        setTimeout(async()=>{
+          appendMsg('ai',msg);
+          messages.push({role:'assistant',content:msg,created_at:new Date().toISOString()});
+          await saveMsg('assistant',msg);
+        },1000);
+        // 다음 메시지에서 번호로 삭제할 수 있도록 임시 저장
+        localStorage.setItem('td_pending_delete',JSON.stringify(allSchedules.slice(0,5).map(s=>({id:s.id,title:s.title}))));
+      }
+      return;
+    }catch(e){console.error('일정 삭제 오류:',e);}
+  }
+  // ── 번호로 삭제 응답 감지 ──
+  const pendingDelete=localStorage.getItem('td_pending_delete');
+  if(pendingDelete){
+    const numMatch=text.match(/^(\d)$/);
+    if(numMatch){
+      const idx=parseInt(numMatch[1])-1;
+      const items=JSON.parse(pendingDelete);
+      if(idx>=0&&idx<items.length){
+        const item=items[idx];
+        try{
+          const uid=safeUserId();if(!uid)return;
+          await sb.from('schedules').delete().eq('id',item.id);
+          const msg=`${item.title} 삭제했어 🗑️`;
+          setTimeout(async()=>{
+            appendMsg('ai',msg);
+            messages.push({role:'assistant',content:msg,created_at:new Date().toISOString()});
+            await saveMsg('assistant',msg);
+          },1000);
+          if(currentTab==='calendar')loadCalendar();
+          else{const{data:all}=await sb.from('schedules').select('*').eq('user_id',uid);calSchedules=all||[];}
+        }catch(e){}
+        localStorage.removeItem('td_pending_delete');
+        return;
+      }
+    }
+    localStorage.removeItem('td_pending_delete');
+  }
+
   // 명확한 일정 등록 의도
   const explicitPattern=/일정\s*(등록|추가|넣어|해줘|저장)|캘린더\s*(에|에다)?\s*(등록|추가|넣어|해줘)/;
   const scheduleWithDate=/((내일|모레|다음\s*주|이번\s*주|월요일|화요일|수요일|목요일|금요일|토요일|일요일|(\d{1,2})월\s*(\d{1,2})일).{0,20}(약속|미팅|회의|예약|일정|방문|면접|모임|데이트|병원|시험|콘서트|공연|결혼식|치과|피부과|식당)|(약속|미팅|회의|예약|일정|방문|면접|모임|데이트|병원|시험|콘서트|공연|결혼식|치과|피부과|식당).{0,20}(내일|모레|다음\s*주|이번\s*주|월요일|화요일|수요일|목요일|금요일|토요일|일요일|(\d{1,2})월\s*(\d{1,2})일))/;

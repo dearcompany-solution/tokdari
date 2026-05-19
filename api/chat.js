@@ -194,10 +194,14 @@ module.exports = async function handler(req, res) {
           const results = validResults
             .map((r,i) => {
               const showLink = LINK_ALLOWED.some(d => r.url.includes(d));
-              return `${r.title}\n${r.description||''}${showLink?'\n'+r.url:''}${r.age?'\n'+r.age:''}`;
+              // URL에 한글이 인코딩 안 된 채로 들어가거나, 틀: 같은 위키 특수페이지 필터
+              let cleanUrl = showLink ? r.url : '';
+              if(cleanUrl && (/틀:|분류:|특수:|Template:|Category:/.test(decodeURIComponent(cleanUrl)))) cleanUrl = '';
+              if(cleanUrl && cleanUrl.length > 200) cleanUrl = '';
+              return `${r.title}\n${r.description||''}${cleanUrl?'\n'+cleanUrl:''}${r.age?'\n'+r.age:''}`;
             })
             .join('\n\n');
-          searchContext = `\n\n====검색결과(${today})====\n${results}\n====끝====\n\n[규칙]\n1. 위 내용 기반으로 자연스럽게 답해. 오늘 날짜는 ${today}이야\n2. 링크 줄 때는 "여기서 볼 수 있어" "이거 참고해봐" 같이 자연스럽게\n3. 위에 없는 URL 절대 만들지 마\n4. "출처" "참고" 같은 딱딱한 표현 쓰지 마\n5. 반말로 짧게 친구처럼\n6. 추천이나 순위 물어보면 검색 결과에서 구체적으로 이름/제목 뽑아서 알려줘. "여러가지 있어" 같은 뭉뚱그리기 금지\n7. 검색결과 형식 그대로 보여주지 마. 네가 아는 것처럼 자연스럽게 말해`;
+          searchContext = `\n\n====검색결과(${today})====\n${results}\n====끝====\n\n[규칙]\n1. 위 내용 기반으로 자연스럽게 답해. 오늘 날짜는 ${today}이야\n2. 링크는 위에 있는 URL을 한글자도 바꾸지 말고 복사해서 줘. URL 수정/조합/생성 절대 금지\n3. 위에 없는 URL 절대 만들지 마. 네가 아는 URL도 쓰지 마\n4. "출처" "참고" 같은 딱딱한 표현 쓰지 마\n5. 반말로 짧게 친구처럼\n6. 추천이나 순위 물어보면 구체적 이름/제목 뽑아서 알려줘\n7. 링크 줄 때 "여기서 볼 수 있어" 같이 자연스럽게\n8. 검색결과 형식 그대로 보여주지 마. 네가 아는 것처럼 말해`;
         } else {
             const fallback = sorted.slice(0, searchCount);
             if(fallback.length > 0){

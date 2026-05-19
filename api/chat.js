@@ -106,6 +106,21 @@ module.exports = async function handler(req, res) {
       'naver.com','daum.net','wikipedia.org','namu.wiki'
     ];
 
+    const LINK_ALLOWED = [
+      'naver.com','daum.net','wikipedia.org','namu.wiki',
+      'youtube.com','youtu.be','tiktok.com','instagram.com',
+      'yna.co.kr','yonhapnews.co.kr','kbs.co.kr','mbc.co.kr','sbs.co.kr',
+      'jtbc.co.kr','ytn.co.kr','newsis.com','news1.kr',
+      'cgv.co.kr','megabox.co.kr','lottecinema.co.kr','kobis.or.kr','imdb.com',
+      'melon.com','genie.co.kr','bugs.co.kr','billboard.com',
+      'map.naver.com','place.map.kakao.com','mangoplate.com','catchtable.co.kr','siksinhot.com',
+      'coupang.com','oliveyoung.co.kr','musinsa.com','danawa.com',
+      'sports.news.naver.com','sports.daum.net',
+      'weather.naver.com','kma.go.kr',
+      'op.gg','fmkorea.com','inven.co.kr','dcinside.com',
+      'google.com'
+    ];
+
     // 검색 실행 함수 — 쿼리 바꿔서 재시도 가능
     async function doSearch(query, freshness=''){
       const freshnessParam = freshness ? `&freshness=${freshness}` : '';
@@ -166,6 +181,8 @@ module.exports = async function handler(req, res) {
         const candidates = sorted.slice(0, 12);
         const accessChecks = await Promise.all(
           candidates.map(async r => {
+            const isAllowed = LINK_ALLOWED.some(d => r.url.includes(d));
+            if(isAllowed) return r;
             const ok = await isLinkAccessible(r.url);
             return ok ? r : null;
           })
@@ -175,7 +192,10 @@ module.exports = async function handler(req, res) {
 
         if(validResults.length > 0){
           const results = validResults
-            .map((r,i) => `${r.title}\n${r.description||''}\n${r.url}${r.age?'\n'+r.age:''}`)
+            .map((r,i) => {
+              const showLink = LINK_ALLOWED.some(d => r.url.includes(d));
+              return `${r.title}\n${r.description||''}${showLink?'\n'+r.url:''}${r.age?'\n'+r.age:''}`;
+            })
             .join('\n\n');
           searchContext = `\n\n====검색결과(${today})====\n${results}\n====끝====\n\n[규칙]\n1. 위 내용 기반으로 자연스럽게 답해. 오늘 날짜는 ${today}이야\n2. 링크 줄 때는 "여기서 볼 수 있어" "이거 참고해봐" 같이 자연스럽게\n3. 위에 없는 URL 절대 만들지 마\n4. "출처" "참고" 같은 딱딱한 표현 쓰지 마\n5. 반말로 짧게 친구처럼\n6. 추천이나 순위 물어보면 검색 결과에서 구체적으로 이름/제목 뽑아서 알려줘. "여러가지 있어" 같은 뭉뚱그리기 금지\n7. 검색결과 형식 그대로 보여주지 마. 네가 아는 것처럼 자연스럽게 말해`;
         } else {

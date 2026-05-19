@@ -1836,7 +1836,7 @@ async function sendMessage(){
   const ta2=document.getElementById('msg-input');
   if(ta2){ta2.focus();}
   await updateBond();
-  if(text) autoDetectSchedule(text);
+  if(text){const handled=await autoDetectSchedule(text);if(handled)return;}
 
   // 기존 타이머 초기화 (연속 입력 감지)
   if(replyTimer) clearTimeout(replyTimer);
@@ -2901,7 +2901,7 @@ async function autoDetectSchedule(text){
         appendMsg('ai','등록된 일정이 없어!');
         messages.push({role:'assistant',content:'등록된 일정이 없어!',created_at:new Date().toISOString()});
         await saveMsg('assistant','등록된 일정이 없어!');
-        return;
+        return true;
       }
       // 키워드로 일정 찾기
       let matched=null;
@@ -2939,7 +2939,7 @@ async function autoDetectSchedule(text){
         // 다음 메시지에서 번호로 삭제할 수 있도록 임시 저장
         localStorage.setItem('td_pending_delete',JSON.stringify(allSchedules.slice(0,5).map(s=>({id:s.id,title:s.title}))));
       }
-      return;
+      return true;
     }catch(e){console.error('일정 삭제 오류:',e);}
   }
   // ── 번호로 삭제 응답 감지 ──
@@ -2964,7 +2964,7 @@ async function autoDetectSchedule(text){
           else{const{data:all}=await sb.from('schedules').select('*').eq('user_id',uid);calSchedules=all||[];}
         }catch(e){}
         localStorage.removeItem('td_pending_delete');
-        return;
+        return true;
       }
     }
     localStorage.removeItem('td_pending_delete');
